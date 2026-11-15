@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aménagement T1 Anglet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='7' fill='%231f5f5b'/%3E%3Cpath d='M7 20V12.5L14 7l7 5.5V20h-4.5v-4.5h-5V20z' fill='none' stroke='%23fff' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg:#efede8; --panel:#fbfaf7; --card:#ffffff; --line:#e3dfd6; --line-strong:#d2ccc0;
+    --ink:#1f2328; --mute:#6f6a60; --soft:#f3f0ea;
+    --accent:#1f5f5b; --accent-soft:#e3efec; --accent-ink:#ffffff;
+    --bad:#c2402f; --bad-soft:#fbeae6;
+    --radius:10px; --shadow:0 1px 2px rgba(30,25,15,.06), 0 4px 14px rgba(30,25,15,.05);
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; font:14px/1.45 Inter, system-ui, "Segoe UI", Arial, sans-serif; color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased; }
+  #app { display:grid; grid-template-columns:288px 1fr 280px; grid-template-rows:58px 1fr; height:100vh; }
+
+  /* ---------- en-tête */
+  header { grid-column:1/4; display:flex; align-items:center; gap:16px; padding:0 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+  .brand svg { flex:none; }
+  .brand h1 { font-size:15px; margin:0; font-weight:650; letter-spacing:-.01em; white-space:nowrap; }
+  .brand .sub { color:var(--mute); font-size:12px; white-space:nowrap; }
+  .grow { flex:1; }
+  .toolbar { display:flex; gap:8px; align-items:center; }
+  .sep { width:1px; height:24px; background:var(--line); }
+
+  /* ---------- boutons */
+  button { font:inherit; cursor:pointer; border:1px solid var(--line-strong); background:var(--card); border-radius:8px; padding:6px 11px; color:var(--ink); transition:background .12s, border-color .12s, color .12s; }
+  button:hover { background:var(--soft); }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  button:disabled { opacity:.4; cursor:default; background:var(--card); }
+  button.danger { color:var(--bad); }
+  button.danger:hover { background:var(--bad-soft); border-color:#e8b9b0; }
+  button.primary, button.on { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  button.primary:hover, button.on:hover { background:#184d4a; }
+  button.icon { padding:6px 9px; display:inline-flex; align-items:center; gap:6px; }
+  button.ghost { border-color:transparent; background:transparent; }
+  button.ghost:hover { background:var(--soft); }
+
+  .seg { display:inline-flex; background:var(--soft); border:1px solid var(--line); border-radius:9px; padding:2px; }
+  .seg button { border:none; background:transparent; padding:5px 11px; border-radius:7px; color:var(--mute); }
+  .seg button:hover { color:var(--ink); background:transparent; }
+  .seg button.active { background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); font-weight:500; }
+
+  /* interrupteurs (cases à cocher stylées) */
+  .switch { display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--mute); cursor:pointer; user-select:none; white-space:nowrap; }
+  .switch input { appearance:none; -webkit-appearance:none; width:28px; height:16px; border-radius:99px; background:var(--line-strong); position:relative; margin:0; cursor:pointer; transition:background .15s; flex:none; }
+  .switch input::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:transform .15s; }
+  .switch input:checked { background:var(--accent); }
+  .switch input:checked::after { transform:translateX(12px); }
+  .switch:has(input:checked) { color:var(--ink); }
+
+  /* ---------- panneaux latéraux */
+  aside { background:var(--panel); overflow:auto; padding:14px; display:flex; flex-direction:column; gap:14px; }
+  #left { border-right:1px solid var(--line); }
+  #right { border-left:1px solid var(--line); }
+  /* meuble sélectionné : la carte Sélection passe tout en haut (ordinateur et onglet Pièce du téléphone) */
+  html.has-sel #sel-card { order:-1; }
+
+  /* ---------- contexte (posé par le script en bas de page : html[data-ctx] = select | elec | walk)
+     la carte utile passe en tête de son panneau et ressort, les autres s'estompent (retour au survol) */
+  aside > .card, aside > .legend { transition:opacity .2s, filter .2s, box-shadow .2s, border-color .2s; }
+  aside .card.ctx-focus { order:-1; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft), var(--shadow); }
+  aside .card.ctx-focus > .card-head h3 { color:var(--accent); }
+  aside .card.ctx-focus > .card-head h3::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--accent); margin-right:7px; vertical-align:1px; }
+  aside.ctx-dim > .card:not(.ctx-focus), aside.ctx-dim > .legend { opacity:.42; filter:saturate(.5); }
+  aside.ctx-dim > .card:not(.ctx-focus):hover, aside.ctx-dim > .card:not(.ctx-focus):focus-within { opacity:1; filter:none; }
+  @keyframes ctx-pulse { 0% { box-shadow:0 0 0 0 rgba(31,95,91,.45), var(--shadow); } 100% { box-shadow:0 0 0 10px rgba(31,95,91,0), var(--shadow); } }
+  aside .card.ctx-pulse { animation:ctx-pulse .7s ease-out; }
+  @media (prefers-reduced-motion: reduce) { aside .card.ctx-pulse { animation:none; } aside > .card { transition:none; } }
+
+  /* Sélection : blocs bien séparés (position, dimensions, couleur, mur, budget) */
+  #sel-card .group-label { color:var(--ink); font-weight:600; }
+  #sel-extra > div:not([hidden]) { border-top:1px solid var(--line); margin-top:12px; padding-top:4px; }
+  #sel-extra > #sel-snap:not([hidden]) { border-top:none; padding-top:0; }
+  /* pendant un glisser : la position se met à jour en direct, on la met en évidence */
+  html.ctx-drag #f-x, html.ctx-drag #f-z, html.ctx-drag #f-rot { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600; }
+
+  /* Électricité : les éléments à poser sont la première chose à voir */
+  #elec-card.ctx-focus .el-types { grid-template-columns:1fr 1fr; gap:6px; padding:10px; margin-top:10px; background:var(--accent-soft); border-radius:9px; }
+  #elec-card.ctx-focus .el-types::before { content:"Ajouter un élément"; grid-column:1 / -1; font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:var(--accent); }
+  #elec-card.ctx-focus .el-types button { padding:8px 8px; font-size:12.5px; background:#fff; border-color:var(--line-strong); }
+  #elec-card.ctx-focus .el-types button:hover { border-color:var(--accent); }
+  #elec-card.ctx-focus .el-types button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); }
+  .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  aside h3 { margin:0; font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--mute); font-weight:600; }
+  aside h4 { margin:14px 0 6px; font-size:12px; color:var(--mute); font-weight:600; }
+  aside h4:first-child { margin-top:4px; }
+  .pill { font-size:11.5px; background:var(--soft); color:var(--mute); padding:1px 8px; border-radius:99px; font-variant-numeric:tabular-nums; }
+
+  input[type=text], input[type=number], input[type=search], select { font:inherit; width:100%; padding:7px 9px; border:1px solid var(--line-strong); border-radius:8px; background:#fff; color:var(--ink); }
+  input::placeholder { color:#a39d92; }
+  .field { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--mute); }
+  .btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .btns.fill > button { flex:1; }
+  .legend { color:var(--mute); font-size:12px; }
+
+  /* scénarios */
+  .scen select { font-weight:500; }
+  .scen .field { margin-top:8px; }
+  #save-status { margin-top:8px; display:flex; align-items:center; gap:6px; }
+  #save-status::before { content:""; width:7px; height:7px; border-radius:50%; background:#3d9a6a; flex:none; }
+  .scen details { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+  .scen summary { cursor:pointer; font-size:13px; color:var(--ink); padding:3px 0; list-style:none; display:flex; align-items:center; gap:6px; }
+  .scen summary::-webkit-details-marker { display:none; }
+  .scen summary::before { content:"›"; display:inline-block; width:10px; color:var(--mute); transition:transform .15s; }
+  .scen details[open] summary::before { transform:rotate(90deg); }
+  .snaprow { display:flex; gap:6px; margin:8px 0; }
+  .snaprow input { flex:1; min-width:0; }
+  #hist-list { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; }
+  #hist-list li { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:12px; padding:6px 0; border-top:1px solid var(--line); }
+  #hist-list li button { padding:3px 8px; font-size:12px; }
+  #hist-list li.muted { color:var(--mute); display:block; border-top:none; }
+  #files .btns button { flex:1 1 calc(50% - 6px); font-size:13px; }
+  #share-box { margin-top:8px; font-size:12px; }
+  #files .legend { margin-top:8px; }
+
+  /* catalogue */
+  #cat-search { margin-bottom:6px; }
+  button.cat { display:flex; width:100%; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:4px; text-align:left; border-color:var(--line); padding:7px 10px; font-size:13px; }
+  button.cat span { font-weight:500; flex:1; min-width:0; }
+  button.cat small { color:var(--mute); font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  button.cat:hover { border-color:var(--accent); background:var(--accent-soft); }
+  button.cat:hover small { color:var(--accent); }
+  #cat-empty { display:none; }
+
+  /* liste des meubles et sélection */
+  ul#list { list-style:none; margin:0; padding:0; }
+  ul#list li { padding:6px 9px; border-radius:7px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  ul#list li::before { content:""; width:7px; height:7px; border-radius:2px; background:var(--line-strong); flex:none; }
+  ul#list li:hover { background:var(--soft); }
+  ul#list li.sel { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  ul#list li.sel::before { background:var(--accent); }
+  ul#list li.bad::before { background:var(--bad); }
+  ul#list li.bad::after { content:"ne rentre pas"; margin-left:auto; font-size:11px; color:var(--bad); font-weight:500; }
+  #sel-name { display:block; font-size:15px; font-weight:600; margin-bottom:2px; }
+  .group-label { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); margin:12px 0 6px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .row.three { grid-template-columns:1fr 1fr 1fr; }
+  .row label { display:flex; flex-direction:column; font-size:11.5px; color:var(--mute); gap:3px; }
+  .row input { padding:6px 7px; font-variant-numeric:tabular-nums; }
+
+  /* ---------- vue 3D et bulles */
+  #view { position:relative; min-width:0; min-height:0; background:#e4e8ec; }
+  #view canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
+  #warn, #hint, #walkhint, #toast { z-index:5; }
+  .bubble { position:absolute; background:rgba(251,250,247,.94); border:1px solid var(--line); border-radius:10px; padding:7px 11px; font-size:12px; color:var(--mute); box-shadow:var(--shadow); backdrop-filter:blur(6px); }
+  #hint { right:14px; bottom:14px; max-width:430px; }
+  .scen .btns button, #left .btns.fill button { font-size:13px; padding:6px 8px; }
+  #hint kbd, #walkhint kbd { font:600 11px/1 system-ui, "Segoe UI", "Segoe UI Symbol", sans-serif; background:#fff; border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; padding:2px 5px; color:var(--ink); }
+  #hint button { position:absolute; top:3px; right:4px; padding:0 6px; border:none; background:transparent; color:var(--mute); font-size:14px; }
+  #hint[hidden] { display:none; }
+  #warn { left:14px; bottom:14px; background:var(--bad-soft); color:#8a2a1c; border-color:#efc2b9; }
+  #warn::before { content:"● "; color:var(--bad); }
+  #warn[hidden] { display:none; }
+  #walkhint { left:50%; top:14px; transform:translateX(-50%); background:rgba(31,35,40,.86); color:#f3f1ec; border:none; max-width:600px; text-align:center; pointer-events:none; }
+  #walkhint kbd { background:rgba(255,255,255,.12); color:#fff; border-color:rgba(255,255,255,.25); }
+  #walkhint[hidden] { display:none; }
+  #toast { left:50%; top:14px; transform:translateX(-50%); background:rgba(31,35,40,.92); color:#fff; border:none; font-size:13px; max-width:540px; text-align:center; }
+  #toast[hidden] { display:none; }
+
+  .dd { position:relative; }
+  .dd-panel { position:absolute; right:0; top:calc(100% + 8px); z-index:30; min-width:210px; background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(30,25,15,.16); padding:12px 14px; display:flex; flex-direction:column; gap:11px; }
+  .dd-panel[hidden] { display:none; }
+  .dd-col { display:flex; flex-direction:column; gap:11px; }
+  .dd-col:empty { display:none; }
+  .dd-panel .switch { font-size:13px; }
+  .brand { flex:none; }
+  header button, header .switch { white-space:nowrap; flex:none; }
+  @media (max-width: 1400px) {
+    .hide-md, .brand .sub { display:none; }
+    header { gap:9px; padding:0 12px; }
+    header .toolbar { gap:6px; }
+    header .switch { font-size:12px; gap:5px; }
+    .seg button { padding:5px 8px; }
+  }
+  @media (max-width: 900px) {
+    #app { grid-template-columns:1fr; grid-template-rows:auto 58vh auto auto; height:auto; }
+    header { grid-column:1; flex-wrap:wrap; padding:10px 14px; gap:10px; }
+    #view { height:58vh; }
+    #hint { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#1f5f5b"/><path d="M7 20V12.5L14 7l7 5.5V20h-4.5v-4.5h-5V20z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <div>
+        <h1>T1 n°15 · Anglet</h1>
+        <div class="sub"><span id="area"></span></div>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="toolbar">
+      <button id="btn-undo" class="icon ghost" title="Annuler (Ctrl+Z)" disabled>↶ <span class="hide-md">Annuler</span></button>
+      <button id="btn-redo" class="icon ghost" title="Rétablir (Ctrl+Y)" disabled>↷ <span class="hide-md">Rétablir</span></button>
+    </div>
+    <span class="grow"></span>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Vues">
+        <button data-view="iso" class="active">3D</button>
+        <button data-view="top">Dessus</button>
+        <button data-view="entry">Entrée</button>
+        <button data-view="baie">Baie</button>
+      </div>
+      <button id="btn-walk" class="icon" title="Se promener dans l'appartement">🚶 Marcher</button>
+    </div>
+    <!-- boutons ajoutés par src/measure.js (outil de mesure, zones de passage) -->
+    <div id="tools-slot" class="toolbar"></div>
+    <!-- bouton ajouté par src/electric.js -->
+    <div id="elec-slot" class="toolbar"></div>
+    <div class="sep"></div>
+    <div class="toolbar">
+      <label class="switch"><input type="checkbox" id="real"> Réaliste</label>
+      <!-- menu « Affichage » : regroupe les interrupteurs pour garder l'en-tête sur une ligne -->
+      <div class="dd" id="disp-dd">
+        <button id="disp-btn" aria-haspopup="true" aria-expanded="false">Affichage ▾</button>
+        <div class="dd-panel" id="disp-panel" hidden>
+          <label class="switch"><input type="checkbox" id="cotes"> Cotes des murs</label>
+          <label class="switch"><input type="checkbox" id="low"> Murs bas</label>
+          <label class="switch" title="Les déplacements se calent tous les 5 cm"><input type="checkbox" id="snap" checked> Aimant 5 cm</label>
+          <!-- interrupteur(s) ajouté(s) par src/snap.js -->
+          <span id="snap-slot" class="dd-col"></span>
+          <!-- interrupteurs de src/measure.js déplacés ici au chargement (Cotes auto, Passages) -->
+          <div id="disp-moved" class="dd-col"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside id="left">
+    <section class="card scen">
+      <div class="card-head"><h3>Scénario</h3></div>
+      <select id="scen-select" aria-label="Choisir un scénario"></select>
+      <label class="field">Nom<input id="scen-name" type="text" maxlength="60"></label>
+      <div class="btns fill">
+        <button id="scen-new" title="Nouveau scénario vide">Nouveau</button>
+        <button id="scen-dup" title="Copier ce scénario pour tester une variante">Dupliquer</button>
+        <button id="scen-del" class="danger" title="Supprimer ce scénario">Supprimer</button>
+      </div>
+      <div id="save-status" class="legend"></div>
+
+      <details id="hist">
+        <summary>Historique des versions</summary>
+        <div class="snaprow">
+          <input id="snap-label" type="text" placeholder="Nom de la version (facultatif)" maxlength="60">
+          <button id="snap-save" class="primary">Enregistrer</button>
+        </div>
+        <ul id="hist-list"></ul>
+      </details>
+
+      <details id="files">
+        <summary>Exporter, importer, partager</summary>
+        <div class="btns">
+          <button id="exp-cur">Exporter ce scénario</button>
+          <button id="exp-all">Tout exporter</button>
+          <button id="imp">Importer…</button>
+          <input type="file" id="imp-file" accept=".json,application/json" hidden>
+          <button id="share">Lien de partage</button>
+        </div>
+        <input id="share-box" type="text" readonly hidden aria-label="Lien de partage">
+        <div class="legend">L'export crée un fichier .json : copie de sécurité, ou à envoyer à quelqu'un. Les scénarios restent aussi enregistrés dans ce navigateur.</div>
+        <!-- rempli par src/export.js (images, plan, lien de visite) -->
+        <div id="export-slot"></div>
+      </details>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h3>Ajouter un meuble</h3></div>
+      <input id="cat-search" type="search" placeholder="Rechercher (lit, bureau, étagère…)" aria-label="Rechercher un meuble">
+      <div id="catalog"></div>
+      <div id="cat-empty" class="legend">Aucun meuble ne correspond.</div>
+      <div class="btns fill">
+        <button id="btn-reset" title="Remplacer ce scénario par la proposition de départ (Ctrl+Z pour annuler)">Proposition de départ</button>
+        <button id="btn-clear" class="danger" title="Retirer tous les meubles (Ctrl+Z pour annuler)">Vider</button>
+      </div>
+    </section>
+
+    <!-- rempli par src/custom.js (meubles personnalisés) -->
+    <section class="card" id="custom-card"></section>
+    <!-- rempli par src/electric.js (prises, interrupteurs, points lumineux) -->
+    <section class="card" id="elec-card" hidden></section>
+    <!-- rempli par src/fixtures.js (cotes de la cuisine et de la salle d'eau) -->
+    <section class="card" id="fixtures-card"></section>
+  </aside>
+
+  <div id="view">
+    <div id="toast" class="bubble" hidden role="status"></div>
+    <div id="warn" class="bubble" hidden>Un meuble en rouge dépasse d'un mur ou en chevauche un autre.</div>
+    <div id="walkhint" class="bubble" hidden>Clique dans la vue pour regarder à la souris (<kbd>Échap</kbd> pour libérer) · <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> pour marcher · <kbd>Maj</kbd> courir · <kbd>Flèches gauche/droite</kbd> tourner · re-clique « Marcher » pour sortir</div>
+    <div id="hint" class="bubble"><button id="hint-close" title="Masquer l'aide" aria-label="Masquer l'aide">×</button>Glisser un meuble pour le déplacer · glisser dans le vide pour tourner · molette pour zoomer<br><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> se déplacer (<kbd>Maj</kbd> plus vite) · <kbd>Maj</kbd> en glissant : sans aimant · <kbd>R</kbd> pivoter · <kbd>Flèches</kbd> ajuster le meuble, ou déplacer la vue si rien n'est sélectionné · <kbd>Suppr</kbd> retirer · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler</div>
+  </div>
+
+  <aside id="right">
+    <section class="card">
+      <div class="card-head"><h3>Dans la pièce</h3><span class="pill"><span id="count">0</span> meubles</span></div>
+      <ul id="list"></ul>
+    </section>
+
+    <!-- rempli par src/budget.js (budget, liste de courses) -->
+    <section class="card" id="budget-card"></section>
+
+    <!-- panneau rempli par src/lights.js -->
+    <section class="card" id="lights-card"></section>
+
+    <section class="card" id="sel-card">
+      <div class="card-head"><h3>Sélection</h3></div>
+      <div id="props-empty" class="legend">Clique sur un meuble (dans la vue ou la liste) pour modifier sa position et ses dimensions.</div>
+      <div id="props" hidden>
+        <strong id="sel-name"></strong>
+        <div class="group-label">Position</div>
+        <div class="row three">
+          <label>X (cm)<input id="f-x" type="number" step="1"></label>
+          <label>Z (cm)<input id="f-z" type="number" step="1"></label>
+          <label>Rotation °<input id="f-rot" type="number" step="5"></label>
+        </div>
+        <div class="group-label">Dimensions (cm)</div>
+        <div class="row three">
+          <label>Largeur<input id="f-w" type="number" step="1"></label>
+          <label>Profondeur<input id="f-d" type="number" step="1"></label>
+          <label>Hauteur<input id="f-h" type="number" step="1"></label>
+        </div>
+        <div class="btns">
+          <button id="btn-rl" title="Pivoter de 15° à gauche">⟲ 15°</button>
+          <button id="btn-rr" title="Pivoter de 15° à droite">⟳ 15°</button>
+          <button id="btn-r90" title="Pivoter de 90° (R)">90°</button>
+        </div>
+        <div class="btns fill">
+          <button id="btn-dup">Dupliquer</button>
+          <button id="btn-del" class="danger">Supprimer</button>
+        </div>
+        <!-- chaque module y ajoute son propre bloc (#sel-budget, #sel-custom...) pour le meuble sélectionné -->
+        <div id="sel-extra"></div>
+      </div>
+    </section>
+    <div class="legend" style="padding:0 4px">Positions en cm depuis le coin nord-ouest du séjour (angle de la baie vitrée).</div>
+  </aside>
+</div>
+
+<script src="libs/three.min.js"></script>
+<script src="libs/OrbitControls.js"></script>
+<script src="libs/CopyShader.js"></script>
+<script src="libs/EffectComposer.js"></script>
+<script src="libs/RenderPass.js"></script>
+<script src="libs/ShaderPass.js"></script>
+<script src="libs/MaskPass.js"></script>
+<script src="libs/SimplexNoise.js"></script>
+<script src="libs/SSAOShader.js"></script>
+<script src="libs/SSAOPass.js"></script>
+<script src="libs/GammaCorrectionShader.js"></script>
+<script src="src/materials.js"></script>
+<script src="src/apartment.js"></script>
+<script src="src/furniture.js"></script>
+<script src="src/scenarios.js"></script>
+<script src="src/app.js"></script>
+<script src="src/measure.js"></script>
+<script src="src/lights.js"></script>
+<script src="src/electric.js"></script>
+<script src="src/custom.js"></script>
+<script src="src/snap.js"></script>
+<script src="src/budget.js"></script>
+<script src="src/export.js"></script>
+<script src="src/fixtures.js"></script>
+<script src="src/mobile.js"></script>
+<script>
+  // petits compléments d'interface (indépendants de la 3D)
+  (function () {
+    // vue active mise en évidence
+    const seg = document.querySelectorAll('.seg [data-view]');
+    seg.forEach((b) => b.addEventListener('click', () => { seg.forEach((x) => x.classList.toggle('active', x === b)); }));
+    document.getElementById('btn-walk').addEventListener('click', () => seg.forEach((x) => x.classList.remove('active')));
+
+    // recherche dans le catalogue
+    const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const search = document.getElementById('cat-search');
+    search.addEventListener('input', () => {
+      const q = norm(search.value.trim());
+      let any = false;
+      document.querySelectorAll('#catalog h4').forEach((h) => {
+        let el = h.nextElementSibling, groupHas = false;
+        while (el && el.tagName !== 'H4') {
+          const show = !q || norm(el.textContent).includes(q);
+          el.style.display = show ? '' : 'none';
+          groupHas = groupHas || show;
+          el = el.nextElementSibling;
+        }
+        h.style.display = groupHas ? '' : 'none';
+        any = any || groupHas;
+      });
+      document.getElementById('cat-empty').style.display = any ? 'none' : 'block';
+    });
+
+    // menu « Affichage » : y ranger les interrupteurs d'affichage ajoutés par measure.js, ouvrir / fermer
+    const moved = document.getElementById('disp-moved');
+    document.querySelectorAll('#tools-slot label.switch').forEach((l) => moved.appendChild(l));
+    const ddBtn = document.getElementById('disp-btn'), ddPanel = document.getElementById('disp-panel');
+    ddBtn.addEventListener('click', (e) => { e.stopPropagation(); ddPanel.hidden = !ddPanel.hidden; ddBtn.setAttribute('aria-expanded', String(!ddPanel.hidden)); });
+    document.addEventListener('click', (e) => { if (!ddPanel.hidden && !document.getElementById('disp-dd').contains(e.target)) { ddPanel.hidden = true; ddBtn.setAttribute('aria-expanded', 'false'); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ddPanel.hidden = true; });
+
+    // contexte : ce que l'utilisateur est en train de faire → carte mise en avant, les autres estompées
+    const A = window.__app;
+    if (A && !A.readOnly) {
+      const root = document.documentElement;
+      // contexte → [carte à mettre en avant, panneaux à estomper]
+      const CTX = {
+        select: ['sel-card', ['right']],
+        elec: ['elec-card', ['left', 'right']],
+        walk: ['lights-card', ['left', 'right']],
+      };
+      const current = () => (A.isWalking() ? 'walk' : A.tool === 'elec' ? 'elec' : A.tool ? 'tool' : A.getSelected() ? 'select' : '');
+      let last = null, lastSel = null;
+      function applyCtx() {
+        const c = current(), sel = A.getSelected();
+        if (c === last && sel === lastSel) return;
+        const conf = CTX[c], prevFocus = document.querySelector('.ctx-focus');
+        root.dataset.ctx = c;
+        document.querySelectorAll('.ctx-focus').forEach((n) => n.classList.remove('ctx-focus'));
+        ['left', 'right'].forEach((id) => document.getElementById(id).classList.toggle('ctx-dim', !!conf && conf[1].includes(id)));
+        if (conf) {
+          const card = document.getElementById(conf[0]);
+          if (card) {
+            card.classList.add('ctx-focus');
+            // nouveau contexte ou autre meuble : petite impulsion + remonter le panneau (sur ordinateur)
+            if (card !== prevFocus || sel !== lastSel) {
+              card.classList.remove('ctx-pulse'); void card.offsetWidth; card.classList.add('ctx-pulse');
+              const box = card.parentElement;
+              if (box && box.tagName === 'ASIDE' && !box.classList.contains('m-pane')) box.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }
+        }
+        last = c; lastSel = sel;
+      }
+      document.addEventListener('animationend', (e) => e.target.classList && e.target.classList.remove('ctx-pulse'));
+      A.hooks.change.push(applyCtx);
+      // les outils (⚡, Mesurer, Marcher) changent sans forcément passer par « change » : vérifier après chaque action
+      const later = () => setTimeout(applyCtx, 0);
+      ['click', 'keyup', 'pointerup'].forEach((t) => document.addEventListener(t, later, true));
+      // glisser un meuble : la position (X, Z, rotation) se met à jour en direct → mise en évidence
+      let dragT = null;
+      A.hooks.drag.push(() => { root.classList.add('ctx-drag'); });
+      const endDrag = () => { clearTimeout(dragT); dragT = setTimeout(() => root.classList.remove('ctx-drag'), 250); };
+      ['pointerup', 'pointercancel'].forEach((t) => window.addEventListener(t, endDrag));
+      applyCtx();
+    }
+
+    // bulle d'aide masquable (mémorisé)
+    const hint = document.getElementById('hint');
+    const visit = !!(window.SCEN && SCEN.viewOnly); // mode visite : rien n'est lu ni écrit dans le navigateur
+    try { if (!visit && localStorage.getItem('amenagement-hint-off') === '1') hint.hidden = true; } catch (e) {}
+    document.getElementById('hint-close').addEventListener('click', () => {
+      hint.hidden = true;
+      if (!visit) try { localStorage.setItem('amenagement-hint-off', '1'); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
