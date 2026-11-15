@@ -1076,6 +1076,171 @@
     { id: 'customshelf', name: 'Étagère ouverte', group: 'Personnalisé', w: 80, d: 30, h: 180, build: customShelf(), dynamic: true, custom: true, top: 180 }
   );
 
+  // ================================================================== DÉCO MURALE (sabres, drapeau)
+  // Objets « muraux » (drapeau `wall: { y }`) : posés contre un mur à une hauteur réglable (meta.y = hauteur du bas, cm),
+  // déplaçables comme un meuble ; l'avant = +z local (dos au mur = −z). Les sabres sont construits le long de x local,
+  // poignée à gauche, tranchant vers le haut (présentation traditionnelle), dans leur fourreau.
+  const GOLD = { metalness: 0.8, roughness: 0.32 };
+  // tressage de la poignée (ito) : fond de la couleur du lien, losanges (hishigami) de la couleur de la peau (same)
+  function tsukaTex(wrap, skin, accent) {
+    const k = 'tsuka' + wrap + skin;
+    if (cache[k]) return cache[k];
+    const c = cv(128, 256), x = c.getContext('2d');
+    x.fillStyle = wrap; x.fillRect(0, 0, 128, 256);
+    for (let i = 0; i < 9; i++) { // losanges le long de la poignée (v = longueur)
+      const cy = 14 + i * 28.5;
+      for (const cx of [16, 48, 80, 112]) { // 4 colonnes autour de la poignée : visibles de face comme de côté
+        x.fillStyle = skin; x.beginPath(); x.moveTo(cx, cy - 11); x.lineTo(cx + 9, cy); x.lineTo(cx, cy + 11); x.lineTo(cx - 9, cy); x.closePath(); x.fill();
+      }
+      x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, cy + 14); x.lineTo(128, cy + 14); x.stroke();
+    }
+    if (accent) { x.fillStyle = accent; [16, 48, 80, 112].forEach((cx) => x.fillRect(cx - 5, 118, 10, 18)); } // menuki
+    return (cache[k] = sRGB(c));
+  }
+  // un sabre complet dans son fourreau, centré en (cx, cy, cz), le long de +x (poignée vers −x)
+  function katana(g, o, cx, cy, cz) {
+    const S = new THREE.Group(); S.position.set(cx, cy, cz); g.add(S);
+    const tL = o.tsuka, sL = o.saya, total = 2.2 + tL + 1.5 + sL + 1.5, x0 = -total / 2;
+    const along = (geo) => { geo.rotateZ(-PI / 2); return geo; }; // cylindre (axe y) → axe x
+    // kashira (pommeau)
+    const kas = new THREE.Mesh(along(new THREE.CylinderGeometry(1.45, 1.55, 2.2, 24)), mat(o.metal, o.metalOpts)); kas.scale.set(1, 1.15, 0.85); kas.position.x = x0 + 1.1; S.add(kas);
+    // tsuka (poignée tressée)
+    const ts = new THREE.Mesh(along(new THREE.CylinderGeometry(1.5, 1.6, tL, 28, 1, true)), new THREE.MeshStandardMaterial({ map: tsukaTex(o.wrap, o.skin, o.menuki), roughness: 0.8, side: THREE.DoubleSide }));
+    ts.scale.set(1, 1.15, 0.82); ts.position.x = x0 + 2.2 + tL / 2; ts.castShadow = true; S.add(ts);
+    // fuchi (bague avant la garde)
+    const fu = new THREE.Mesh(along(new THREE.CylinderGeometry(1.65, 1.65, 1.2, 24)), mat(o.metal, o.metalOpts)); fu.scale.set(1, 1.15, 0.85); fu.position.x = x0 + 2.2 + tL + 0.1; S.add(fu);
+    const xT = x0 + 2.2 + tL + 0.9; // garde (tsuba)
+    o.tsuba(S, xT);
+    // fourreau (saya) courbe : ellipse extrudée le long d'un arc (sori ~ 1,8 cm), tranchant vers le haut
+    const xa = xT + 0.6, xb = xa + sL;
+    const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(xa, 0, 0), new THREE.Vector3((xa + xb) / 2, 1.8, 0), new THREE.Vector3(xb, 1.6, 0));
+    const sh = new THREE.Shape(); sh.absellipse(0, 0, 1.75, 1.15, 0, PI * 2, false, 0);
+    const saya = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { steps: 48, bevelEnabled: false, extrudePath: curve }), new THREE.MeshStandardMaterial({ color: o.sayaColor, roughness: o.sayaRough, metalness: 0.05 }));
+    saya.castShadow = true; saya.receiveShadow = true; S.add(saya);
+    // koiguchi (embouchure) et kojiri (bout) : bagues
+    const ring = (x, y, len) => { const r = new THREE.Mesh(along(new THREE.CylinderGeometry(1.85, 1.85, len, 24)), mat(o.fitting, o.fittingOpts)); r.scale.set(1, 1, 0.68); r.position.set(x, y, 0); S.add(r); return r; };
+    ring(xa + 1, 0.15, 2);
+    ring(xb + 0.4, 1.6, 1.6).rotation.z = -0.06;
+    // sageo : cordon noué près de l'embouchure, deux boucles qui pendent
+    const cord = mat(o.cord, { roughness: 0.9 });
+    [9.2, 10.1, 11.0].forEach((dx) => { const kn = new THREE.Mesh(new THREE.TorusGeometry(1.86, 0.24, 8, 28), cord); kn.rotation.y = PI / 2; kn.scale.set(1, 1, 0.66); kn.position.set(xa + dx, 0.75, 0); S.add(kn); });
+    [-1, 1].forEach((sd) => { // nœud : deux petites boucles plates posées sur le devant du fourreau
+      const loop = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.26, 8, 20), cord);
+      loop.scale.set(1.3, 0.75, 0.35); loop.rotation.z = sd * 0.5; loop.position.set(xa + 10.1 + sd * 1.7, 0.2, 1.25); S.add(loop);
+    });
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 4.5, 8), cord); tail.position.set(xa + 10.6, -1.6, 1.15); tail.rotation.z = 0.25; S.add(tail); // brin qui pend
+    if (o.extra) o.extra(S, x0);
+    return S;
+  }
+  // garde ovale de Wado Ichimonji : cerclage doré, centre bronze sombre granité, seppa dorées
+  function tsubaWado(S, xT) {
+    const outer = new THREE.Shape(); outer.absellipse(0, 0, 4.0, 3.7, 0, PI * 2);
+    const hole = new THREE.Path(); hole.absellipse(0, 0, 3.4, 3.1, 0, PI * 2, true); outer.holes.push(hole);
+    const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(outer, { depth: 0.75, bevelEnabled: true, bevelSize: 0.12, bevelThickness: 0.12, bevelSegments: 2 }), mat(0xc9a227, GOLD));
+    rim.rotation.y = PI / 2; rim.position.x = xT + 0.37; S.add(rim);
+    const inner = new THREE.Shape(); inner.absellipse(0, 0, 3.45, 3.15, 0, PI * 2);
+    const plate = new THREE.Mesh(new THREE.ExtrudeGeometry(inner, { depth: 0.5, bevelEnabled: false }), mat(0x4a4632, { roughness: 0.85, metalness: 0.35 }));
+    plate.rotation.y = PI / 2; plate.position.x = xT + 0.25; S.add(plate);
+    [-0.6, 0.6].forEach((dx) => { const sp = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.25, 24), mat(0xd9b545, GOLD)); sp.rotation.z = PI / 2; sp.scale.set(1, 1.1, 0.75); sp.position.x = xT + dx; S.add(sp); });
+  }
+  // garde de Tensa Zangetsu : « manji » noir à crans (4 bras coudés autour d'un carré central)
+  function tsubaZangetsu(S, xT) {
+    const T = new THREE.Group(); T.position.x = xT; T.rotation.y = PI / 2; S.add(T); // plan de la garde perpendiculaire au sabre
+    const bm = mat(0x141416, { roughness: 0.45, metalness: 0.45 });
+    const add = (w, h, x, y, a, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.9), m || bm); b.position.set(x, y, 0); b.rotation.z = a || 0; b.castShadow = true; T.add(b); };
+    add(4.6, 4.6, 0, 0);
+    for (let k = 0; k < 4; k++) {
+      const a = (k * PI) / 2, c = Math.cos(a), s2 = Math.sin(a);
+      const P = (x, y) => [x * c - y * s2, x * s2 + y * c];
+      const arm = P(0, 4.0), elbow = P(-2.2, 6.2), cr = P(-3.6, 5.3);
+      add(1.6, 3.6, arm[0], arm[1], a);
+      add(4.0, 1.6, elbow[0], elbow[1], a);
+      add(0.9, 0.9, cr[0], cr[1], a, mat(0x0a0a0b, { roughness: 0.6 })); // cran
+    }
+  }
+  // chaîne au pommeau de Zangetsu (maillons alternés qui pendent)
+  function chain(S, x0) {
+    const m = mat(0x1c1c1f, { metalness: 0.7, roughness: 0.35 });
+    for (let i = 0; i < 13; i++) {
+      const t = i / 12, l = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.14, 6, 14), m);
+      l.position.set(x0 - 0.8 - Math.sin(t * PI * 0.5) * 3.2, -i * 1.05, 0.2);
+      l.scale.set(1, 1.45, 1); l.rotation.set(i % 2 ? PI / 2 : 0, 0, 0.25 * t); S.add(l);
+    }
+  }
+  const WADO = { tsuka: 26, saya: 74, wrap: '#f3f1ea', skin: '#1a1a1a', menuki: '#c9a227', metal: 0xc9a227, metalOpts: GOLD, fitting: 0xc9a227, fittingOpts: GOLD,
+    sayaColor: 0xf5f3ee, sayaRough: 0.22, cord: 0xf3f1ea, tsuba: tsubaWado };
+  const ZANGETSU = { tsuka: 27, saya: 75, wrap: '#141416', skin: '#b01e22', menuki: null, metal: 0x1a1a1d, metalOpts: { metalness: 0.5, roughness: 0.45 }, fitting: 0x161618,
+    fittingOpts: { roughness: 0.6 }, sayaColor: 0x141416, sayaRough: 0.78, cord: 0x111113, tsuba: tsubaZangetsu, extra: (S, x0) => chain(S, x0) };
+  // crochets muraux : platine contre le mur + bras qui passe sous le fourreau + petit relevé à l'avant
+  function wallHooks(g, d, y, span) {
+    const hm = mat(0x1d1d20, { metalness: 0.5, roughness: 0.4 });
+    [-span / 2, span / 2].forEach((x) => {
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 0.6), hm); pl.position.set(x, y - 1, -d / 2 + 0.3); g.add(pl);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, d - 1.5), hm); arm.position.set(x, y - 2.6, 0); g.add(arm);
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 1), hm); tip.position.set(x, y - 1.6, d / 2 - 1.2); g.add(tip);
+    });
+  }
+  function swordWall(o, axisY) {
+    return (g, w, d) => { wallHooks(g, d, axisY - 1.6, 50); katana(g, o, 0, axisY, -d / 2 + 4.6); };
+  }
+  // support à poser (katana kake) 2 étages, laqué noir : Zangetsu en bas, Wado en haut
+  function swordRack(w, d) {
+    return (g) => {
+      const L = { roughness: 0.35, metalness: 0.1 };
+      rbox(g, w, 2.2, d, 0x121214, 0, 0, 0, 0.8, L); // socle
+      [-w / 2 + 9, w / 2 - 9].forEach((x) => {
+        rbox(g, 3.2, 40, 7, 0x121214, x, 2.2, -d / 2 + 6, 1.2, L); // montant
+        [15, 32].forEach((y) => { // bras en U qui reçoivent les sabres
+          box(g, 3.2, 1.8, 10, 0x121214, x, y - 2.6, -d / 2 + 13, L);
+          box(g, 3.2, 3.4, 1.4, 0x121214, x, y - 2.6, -d / 2 + 17.4, L);
+        });
+      });
+      katana(g, ZANGETSU, 0, 15 + 0.8, -d / 2 + 14.4);
+      katana(g, WADO, 0, 32 + 0.8, -d / 2 + 14.4);
+    };
+  }
+  // drapeau Kame (亀) : tissu orange légèrement ondulé, disque crème cerclé de noir, kanji noir, œillets à gauche
+  function kameTex() {
+    if (cache.kame) return cache.kame;
+    const W = 1500, Hh = 900, c = cv(W, Hh), x = c.getContext('2d'), r = seeded(41);
+    x.fillStyle = '#e8672a'; x.fillRect(0, 0, W, Hh);
+    for (let i = 0; i < 2600; i++) { x.fillStyle = r() > 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(80,20,0,0.05)'; x.fillRect(r() * W, r() * Hh, 2 + r() * 3, 1); } // trame du tissu
+    x.fillStyle = 'rgba(120,40,0,0.18)'; x.fillRect(0, 0, 22, Hh); // ourlet côté hampe
+    const cx = W / 2, cy = Hh / 2, R = Hh * 0.355;
+    x.fillStyle = '#111'; x.beginPath(); x.arc(cx, cy, R, 0, PI * 2); x.fill();
+    x.fillStyle = '#f2dc9e'; x.beginPath(); x.arc(cx, cy, R * 0.9, 0, PI * 2); x.fill();
+    x.fillStyle = '#111'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = '900 ' + Math.round(R * 1.38) + 'px "Yu Gothic", "YuGothic", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Microsoft YaHei", "MS Gothic", sans-serif';
+    x.fillText('亀', cx, cy + R * 0.04);
+    [[34, 34], [34, Hh - 34]].forEach(([gx, gy]) => { // œillets
+      x.fillStyle = '#c7c9cc'; x.beginPath(); x.arc(gx, gy, 15, 0, PI * 2); x.fill();
+      x.fillStyle = '#5b4a40'; x.beginPath(); x.arc(gx, gy, 7, 0, PI * 2); x.fill();
+    });
+    return (cache.kame = sRGB(c));
+  }
+  function flagKame(w, d, h) {
+    return (g) => {
+      const geo = new THREE.PlaneGeometry(w, h, 40, 24), pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) { // plis légers (le tissu n'est pas tendu)
+        const px = pos.getX(i), py = pos.getY(i);
+        pos.setZ(i, 0.5 * Math.sin(px / 9.5) * (0.6 + 0.4 * Math.cos(py / 23)) + 0.25 * Math.sin(py / 7 + px / 31));
+      }
+      geo.computeVertexNormals();
+      const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: kameTex(), roughness: 0.92, side: THREE.DoubleSide }));
+      f.position.set(0, h / 2, -d / 2 + 1.2); f.castShadow = true; f.receiveShadow = true; g.add(f);
+      [[-w / 2 + 3.4, h - 3.4], [-w / 2 + 3.4, 3.4], [w / 2 - 3.4, h - 3.4], [w / 2 - 3.4, 3.4]].forEach(([px, py]) => { // punaises
+        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.8, 10), mat(0x9aa0a6, { metalness: 0.7, roughness: 0.3 }));
+        pin.rotation.x = PI / 2; pin.position.set(px, py, -d / 2 + 1.9); g.add(pin);
+      });
+    };
+  }
+  FURN.catalog.push(
+    { id: 'flagkame', name: 'Drapeau Kame 亀 (mural)', group: 'Déco', w: 150, d: 3, h: 90, build: flagKame(150, 3, 90), wall: { y: 125 } },
+    { id: 'swordwado', name: 'Sabre Wado Ichimonji (mural)', group: 'Déco', w: 104, d: 9, h: 14, build: swordWall(WADO, 8), wall: { y: 150 } },
+    { id: 'swordzangetsu', name: 'Sabre Tensa Zangetsu (mural)', group: 'Déco', w: 105, d: 9, h: 26, build: swordWall(ZANGETSU, 19), wall: { y: 115 } },
+    { id: 'swordrack', name: 'Support 2 sabres (Wado + Zangetsu)', group: 'Déco', w: 70, d: 26, h: 44, build: swordRack(70, 26), onTop: true } // les sabres (~105 cm) dépassent du support
+  );
+
   FURN.byId = Object.fromEntries(FURN.catalog.map((c) => [c.id, c]));
 
   // Construit un meuble aux dimensions voulues (mise à l'échelle depuis les dimensions du catalogue)

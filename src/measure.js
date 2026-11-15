@@ -662,7 +662,7 @@
     const t0 = performance.now();
     const hw = passW / 2;
     const free = base.slice();
-    const items = app.items;
+    const items = app.items.filter((it) => !(app.onWall && app.onWall(it))); // objets muraux : en hauteur, ne gênent pas le passage
     const polys = items.map((it) => app.poly(it));
     polys.forEach((pl) => raster(pl, (k) => (free[k] = 0)));
 

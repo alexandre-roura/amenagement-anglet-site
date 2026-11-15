@@ -81,8 +81,12 @@
   const bathSegs = makeSegs(APT.bathPoly, 'bath', 'wall');
   const fixedSegs = [];
   APT.fixed.forEach((f) => fixedSegs.push(...makeSegs(f.poly, null, 'fixed')));
+  // faces des éléments fixes pleine hauteur (bourrelet, colonne du chauffe-eau) : murs pour les objets muraux
+  const tallSegs = [];
+  const buildTall = () => { tallSegs.length = 0; APT.fixed.filter((f) => f.kind === 'pillar' || f.kind === 'column').forEach((f) => tallSegs.push(...makeSegs(f.poly, null, 'fixed'))); };
+  buildTall();
   // cuisine / salle d'eau réglées depuis l'interface : recalculer les bords des éléments fixes
-  if (app.hooks.fixed) app.hooks.fixed.push(() => { fixedSegs.length = 0; APT.fixed.forEach((f) => fixedSegs.push(...makeSegs(f.poly, null, 'fixed'))); });
+  if (app.hooks.fixed) app.hooks.fixed.push(() => { fixedSegs.length = 0; APT.fixed.forEach((f) => fixedSegs.push(...makeSegs(f.poly, null, 'fixed'))); buildTall(); });
 
   // ouvertures (portes, baie, porte-fenêtre) reportées sur tous les segments colinéaires (mur partagé avec la salle d'eau)
   Object.keys(APT.openings).forEach((k) => {
@@ -250,7 +254,8 @@
   function snapDragStep(it) {
     const x0 = it.x, z0 = it.z, rot0 = session.rot0;
     it.rot = rot0;
-    if (blocked() || !enabled() || altDown || onTop(it)) { clearGuides(); return; }
+    // un objet mural reste collé au mur même si « Aimant aux murs » est décoché (Maj / Alt pour le décoller)
+    if (blocked() || (!enabled() && !isWallItem(it)) || altDown || onTop(it)) { clearGuides(); return; }
 
     // 1) murs et éléments fixes
     let wallSegsUsed = [];
@@ -340,11 +345,13 @@
   // (une chaise tournée vers le mur reste tournée vers le mur).
   const HAS_BACK = new Set(['wardrobe', 'bookshelf', 'dresser', 'nightstand', 'bed1', 'bed2', 'loftbed', 'sofa', 'deskpc', 'desk',
     'kallax', 'kallaxmanga', 'column', 'shoebench', 'tvstand', 'mirror', 'fridge170', 'customshelf']);
-  const hasBack = (it) => HAS_BACK.has(it.type);
+  const isWallItem = (it) => !!(FURN.byId[it.type] && FURN.byId[it.type].wall); // drapeau, sabres… : toujours dos au mur
+  const hasBack = (it) => HAS_BACK.has(it.type) || isWallItem(it);
   // rotation préférée contre ce mur : même sens d'empreinte que rot0 ; dos au mur si le meuble a un dos et que son avant
   // ou son dos fait face au mur
   function wallRots(it, seg, rot0) {
     const back = norm360((Math.atan2(seg.n[0], seg.n[1]) * 180) / Math.PI); // avant du meuble = vers la pièce
+    if (isWallItem(it)) return { main: back, alt: null }; // objet mural : toujours à plat, dos au mur
     let r = norm360(alignedRot(seg, rot0));
     let other;
     if (hasBack(it)) {
@@ -404,7 +411,8 @@
     if (!it || blocked() || onTop(it)) return false;
     const x0 = it.x, z0 = it.z, rot0 = it.rot;
     const inBath = APT.pointInPoly([x0, z0], APT.bathPoly);
-    const room = inBath ? bathSegs : mainSegs;
+    // objet mural : les faces du bourrelet (et des colonnes pleine hauteur) sont des murs comme les autres
+    const room = (inBath ? bathSegs : mainSegs).concat(isWallItem(it) ? tallSegs : []);
     const cur = app.poly(it);
     const walls = room
       .map((seg) => {

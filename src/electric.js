@@ -898,7 +898,8 @@
     return postLights(sw, k).length ? { sw, k } : null;
   }
   window.addEventListener('pointerdown', (e) => {
-    if (mode || A.tool || A.readOnly || e.button !== 0 || e.target !== cvs) return;
+    // aussi en mode visite : le visiteur allume / éteint (rien n'est enregistré chez lui : save() ne fait rien en visite)
+    if (mode || A.tool || e.button !== 0 || e.target !== cvs) return;
     const hit = switchHit(e);
     if (!hit) return;
     e.stopImmediatePropagation(); // ni sélection de meuble, ni rotation de la caméra

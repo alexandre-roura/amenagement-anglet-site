@@ -61,6 +61,9 @@
   #right { border-left:1px solid var(--line); }
   /* meuble sélectionné : la carte Sélection passe tout en haut (ordinateur et onglet Pièce du téléphone) */
   html.has-sel #sel-card { order:-1; }
+  .ywrap { align-items:end; margin-top:8px; }
+  .ywrap button { padding:6px 8px; font-size:12.5px; }
+  #f-y-info { margin-top:4px; }
 
   /* ---------- contexte (posé par le script en bas de page : html[data-ctx] = select | elec | walk)
      la carte utile passe en tête de son panneau et ressort, les autres s'estompent (retour au survol) */
@@ -327,6 +330,14 @@
           <label>Largeur<input id="f-w" type="number" step="1"></label>
           <label>Profondeur<input id="f-d" type="number" step="1"></label>
           <label>Hauteur<input id="f-h" type="number" step="1"></label>
+        </div>
+        <!-- hauteur du bas de l'objet (au sol, posé sur un meuble, accroché au mur) -->
+        <div id="f-y-wrap">
+          <div class="row ywrap">
+            <label>Hauteur du bas (cm)<input id="f-y" type="number" step="1" min="0" title="Page↑ / Page↓ : monter / descendre (Maj : 5 cm)"></label>
+            <button id="f-y-snap" type="button" title="Poser sur le meuble ou le plan de travail en dessous">⤓ Poser dessus</button>
+          </div>
+          <div class="legend" id="f-y-info"></div>
         </div>
         <div class="btns">
           <button id="btn-rl" title="Pivoter de 15° à gauche">⟲ 15°</button>

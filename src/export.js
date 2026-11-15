@@ -571,7 +571,7 @@
     banner.id = 'visit-banner';
     banner.title = 'Ce scénario est affiché en lecture seule : rien ne peut être modifié ni enregistré.';
     const txt = document.createElement('span');
-    txt.textContent = `Visite · ${name} · lecture seule`;
+    txt.textContent = `Visite · ${name}`;
     banner.appendChild(txt);
     const sep = header && header.querySelector('.sep');
     if (sep) sep.after(banner); else if (header) header.appendChild(banner);
@@ -592,20 +592,117 @@
     legend.className = 'bubble';
     const coarse = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
     legend.innerHTML = coarse
-      ? '<b>1 doigt</b> : tourner · <b>2 doigts</b> : zoomer / déplacer<br>' +
-        'Vue <b>Dessus</b> : 1 doigt pour faire défiler · <b>🚶</b> : visiter à hauteur d\'yeux (joystick)'
-      : '<b>Glisser</b> : tourner · <b>Clic droit + glisser</b> : déplacer · <b>Molette</b> : zoomer<br>' +
-        'Vue <b>Dessus</b> : glisser pour faire défiler · <b>🚶 Marcher</b> : visiter à hauteur d\'yeux (Z Q S D)';
+      ? '<b>1 doigt</b> : tourner · <b>2 doigts</b> : zoomer · <b>🚶 Visiter</b> : à hauteur d\'yeux · touche un <b>interrupteur</b> pour allumer'
+      : '<b>Glisser</b> : tourner · <b>Molette</b> : zoomer · <b>🚶 Visiter</b> : à hauteur d\'yeux (Z Q S D) · clique un <b>interrupteur</b> pour allumer';
     const view = $('view');
     if (view) view.appendChild(legend);
-    // écran tactile : la légende couvre une partie de la vue → elle se referme d'un toucher, ou seule après 20 s
+    // l'astuce s'efface d'elle-même après 8 s (ou d'un clic / toucher)
     let dismissed = false;
-    if (coarse) {
-      legend.title = 'Toucher pour masquer';
-      const hide = () => { dismissed = true; legend.hidden = true; };
-      legend.addEventListener('click', hide);
-      setTimeout(hide, 20000);
-    }
+    legend.title = 'Cliquer pour masquer';
+    const hide = () => { dismissed = true; legend.classList.add('fade'); setTimeout(() => (legend.hidden = true), 450); };
+    legend.addEventListener('click', hide);
+    setTimeout(hide, 8000);
+
+    // ---- barre de visite flottante : vues, marche, moment de la journée, rendu réaliste (boutons propres, qui pilotent
+    // les commandes existantes de l'en-tête — masquées en visite — sans les déplacer : rien à défaire sur téléphone)
+    const st = document.createElement('style');
+    st.textContent = `
+      html.view-mode header > .toolbar:not(#visit-tools), html.view-mode header > .sep, html.view-mode #warn { display:none !important; }
+      html.view-mode #visit-banner { font-weight:600; }
+      #visit-dock { position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:8;
+        display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; padding:6px; max-width:calc(100% - 24px);
+        background:rgba(251,250,247,.9); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+        border:1px solid var(--line); border-radius:16px; box-shadow:0 8px 30px rgba(30,25,15,.18); }
+      #visit-dock .grp { display:inline-flex; background:var(--soft); border-radius:11px; padding:2px; gap:2px; }
+      #visit-dock button { border:none; background:transparent; border-radius:9px; padding:7px 12px; font-size:13.5px; color:var(--mute); min-height:36px; white-space:nowrap; }
+      #visit-dock button:hover { color:var(--ink); background:rgba(0,0,0,.04); }
+      #visit-dock button.on { background:var(--card); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+      #visit-dock .walk.on { background:var(--accent); color:#fff; }
+      #visit-dock .sep2 { width:1px; align-self:stretch; background:var(--line); margin:4px 2px; }
+      #visit-dock.walking .views { display:none; }
+      html.view-mode #visit-legend { right:auto; left:50%; transform:translateX(-50%); bottom:calc(84px + env(safe-area-inset-bottom)); max-width:min(560px, calc(100% - 24px));
+        text-align:center; cursor:pointer; transition:opacity .4s; }
+      html.view-mode #visit-legend.fade { opacity:0; pointer-events:none; }
+      html.m-ui.view-mode header { display:none !important; }
+      html.m-ui.view-mode #view { top:0 !important; }
+      /* téléphone en marche : barre en bas à droite (le joystick est en bas à gauche, l'aide de la marche en haut) */
+      html.m-ui.view-mode.m-walk #visit-dock { left:auto; right:max(10px, env(safe-area-inset-right)); transform:none; }
+      html.m-ui.view-mode.m-walk #visit-tools { display:none !important; }
+      html.m-ui.view-mode #visit-dock .views, html.m-ui.view-mode #visit-dock .sep2,
+      html.m-ui.view-mode #visit-banner, html.m-ui.view-mode #visit-tools { display:none !important; }
+      .v-burger, .v-menu { display:none; }
+      html.m-ui.view-mode .v-menu .m-row button.on { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+      html.m-ui.view-mode #visit-legend { bottom:calc(84px + env(safe-area-inset-bottom)) !important; }
+
+      html.m-ui.view-mode #visit-legend { left:12px !important; right:12px !important; transform:none !important; max-width:none !important; bottom:calc(96px + env(safe-area-inset-bottom)) !important; }
+      @media (max-width: 600px) {
+        #visit-dock { bottom:calc(10px + env(safe-area-inset-bottom)); gap:4px; padding:5px; border-radius:14px; }
+        #visit-dock button { padding:7px 9px; font-size:13px; }
+        #visit-dock .lbl { display:none; }
+        #visit-dock .sep2 { display:none; }
+        html.view-mode #visit-legend { bottom:calc(118px + env(safe-area-inset-bottom)); font-size:12px; }
+      }`;
+    document.head.appendChild(st);
+    const dock = document.createElement('div');
+    dock.id = 'visit-dock';
+    const VIEWS = [['iso', '3D'], ['top', 'Dessus'], ['entry', 'Entrée'], ['baie', 'Baie']];
+    const MOMS = [['jour', '☀', 'Jour'], ['soir', '◐', 'Soir'], ['nuit', '☾', 'Nuit']];
+    dock.innerHTML =
+      '<div class="grp views">' + VIEWS.map(([k, t]) => '<button data-v="' + k + '">' + t + '</button>').join('') + '</div>' +
+      '<button class="walk" title="Visiter à hauteur d\'yeux">🚶 <span class="lbl">Visiter</span></button>' +
+      '<span class="sep2"></span>' +
+      '<div class="grp moments">' + MOMS.map(([k, i, t]) => '<button data-m="' + k + '" title="' + t + '">' + i + ' <span class="lbl">' + t + '</span></button>').join('') + '</div>' +
+      '<button class="real" title="Rendu réaliste (ombres, matières)">✨ <span class="lbl">Réaliste</span></button>';
+    if (view) view.appendChild(dock);
+    const realBox = $('real');
+    const setView = (k) => { const b = document.querySelector('.seg [data-view="' + k + '"]'); if (b) b.click(); };
+    dock.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => setView(b.dataset.v)));
+    dock.querySelector('.walk').onclick = () => { const w = $('btn-walk'); if (w) w.click(); };
+    dock.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => {
+      if (window.__lights && __lights.setAmb) __lights.setAmb(Object.assign({}, __lights.amb(), { moment: b.dataset.m }));
+      if (app.invalidate) app.invalidate();
+    }));
+    dock.querySelector('.real').onclick = () => { if (realBox) { realBox.checked = !realBox.checked; realBox.dispatchEvent(new Event('change')); } };
+    // état des boutons (vue active, marche, moment, réaliste)
+    let curView = 'iso';
+    document.querySelectorAll('.seg [data-view]').forEach((b) => b.addEventListener('click', () => { curView = b.dataset.view; }));
+    const syncDock = () => {
+      const w = !!(app.isWalking && app.isWalking()), m = window.__lights ? __lights.amb().moment : 'jour';
+      dock.classList.toggle('walking', w);
+      dock.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', !w && b.dataset.v === curView));
+      dock.querySelector('.walk').classList.toggle('on', w);
+      dock.querySelectorAll('[data-m]').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+      dock.querySelector('.real').classList.toggle('on', !!(realBox && realBox.checked));
+    };
+    dock.addEventListener('click', () => setTimeout(syncDock, 0));
+    // téléphone (html.m-ui) : burger flottant → titre, vues, image, plan ; la barre du bas garde Visiter / moments / réaliste
+    const vBurger = document.createElement('button');
+    vBurger.className = 'm-burger v-burger'; vBurger.type = 'button'; vBurger.setAttribute('aria-label', 'Menu');
+    vBurger.innerHTML = '<span></span><span></span><span></span>';
+    const vMenu = document.createElement('div');
+    vMenu.className = 'm-overlay v-menu'; vMenu.hidden = true;
+    vMenu.innerHTML = '<div class="m-title"></div><div class="m-sec">Vues</div><div class="m-row v-views">' +
+      VIEWS.map(([k, t]) => '<button data-v="' + k + '">' + t + '</button>').join('') + '</div>' +
+      '<div class="m-sec">Exporter</div><div class="m-row"><button class="v-img">📷 Image</button><button class="v-pl">🖨 Plan 2D</button></div>';
+    vMenu.querySelector('.m-title').textContent = 'Visite · ' + name;
+    if (view) view.append(vMenu, vBurger);
+    const setVMenu = (open) => { vMenu.hidden = !open; vBurger.classList.toggle('on', open); };
+    vBurger.onclick = (e) => { e.stopPropagation(); setVMenu(vMenu.hidden); };
+    vMenu.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => { setView(b.dataset.v); setVMenu(false); syncDock(); }));
+    vMenu.querySelector('.v-img').onclick = () => { setVMenu(false); savePng(); };
+    vMenu.querySelector('.v-pl').onclick = () => { setVMenu(false); openPlan(); };
+    vMenu.addEventListener('click', (e) => { if (e.target === vMenu) setVMenu(false); });
+    app.hooks.frame.push(() => vMenu.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === curView)));
+
+    app.hooks.frame.push(syncDock);
+    syncDock();
+    // le visiteur ne voit ni les zones jaunes / rouges sous les meubles, ni l'avertissement « ne rentre pas »
+    const hideDecals = () => app.items.forEach((i) => { if (i.decal) i.decal.material.opacity = 0; });
+    app.hooks.change.push(hideDecals);
+    hideDecals();
+    // ordinateur : rendu réaliste d'office (sur téléphone il resterait trop lourd ; le bouton ✨ reste disponible)
+    if (!coarse && realBox && !realBox.checked) setTimeout(() => { realBox.checked = true; realBox.dispatchEvent(new Event('change')); syncDock(); }, 300);
+
     // pendant la marche, la bulle d'aide de la marche remplace la légende
     let walking = null;
     app.hooks.frame.push(() => {

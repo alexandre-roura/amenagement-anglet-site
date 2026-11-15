@@ -49,10 +49,53 @@
     html.m-ui #btn-walk { flex:none; min-width:42px; justify-content:center; padding:0 10px; }
     html.m-ui #m-more-btn { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:40px; padding:0 10px; font-size:18px; flex:none; }
     @media (max-width: 359px) { html.m-ui .seg button { padding:0 6px; font-size:12px; } }
-    html.m-ui #m-more-btn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+
+
+    /* ---------- téléphone : plus d'en-tête ; un bouton burger flottant (≡ → ✕ animé) ouvre un menu plein écran translucide */
+    html.m-ui { --m-head:0px; }
+    html.m-ui header { display:none !important; }
+    .m-burger { display:none; }
+    html.m-ui .m-burger { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; position:absolute;
+      top:calc(10px + env(safe-area-inset-top)); right:max(10px, env(safe-area-inset-right)); z-index:50; width:48px; height:48px; padding:0;
+      border-radius:15px; border:1px solid var(--line); background:rgba(251,250,247,.86); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+      box-shadow:0 4px 16px rgba(30,25,15,.16); }
+    html.m-ui .m-burger span { display:block; width:20px; height:2px; border-radius:2px; background:var(--ink); transition:transform .25s ease, opacity .2s ease; }
+    html.m-ui .m-burger.on span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+    html.m-ui .m-burger.on span:nth-child(2) { opacity:0; transform:scaleX(.2); }
+    html.m-ui .m-burger.on span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+    @keyframes m-menu-in { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:none; } }
+    html.m-ui :is(#m-more, .m-overlay) { position:absolute; inset:0; z-index:45; display:flex; flex-direction:column; gap:14px; overflow:auto;
+      padding:calc(72px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      background:rgba(246,244,239,.6); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+      animation:m-menu-in .22s ease-out; }
+    html.m-ui :is(#m-more, .m-overlay)[hidden] { display:none; }
+    html.m-ui :is(#m-more, .m-overlay) .m-sec { font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--mute); font-weight:700; margin:6px 2px -6px; }
+    html.m-ui :is(#m-more, .m-overlay) button, html.m-ui :is(#m-more, .m-overlay) .switch { min-height:48px; font-size:15px; border-radius:12px; background:rgba(255,255,255,.82);
+      border:1px solid rgba(0,0,0,.08); box-shadow:0 1px 2px rgba(0,0,0,.05); }
+    html.m-ui :is(#m-more, .m-overlay) .toolbar, html.m-ui :is(#m-more, .m-overlay) .m-row { display:flex; flex-wrap:wrap; gap:8px; }
+    html.m-ui :is(#m-more, .m-overlay) .toolbar > button, html.m-ui :is(#m-more, .m-overlay) .m-row > button { flex:1 1 auto; justify-content:center; }
+    html.m-ui :is(#m-more, .m-overlay) .seg { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; width:100%; background:transparent; border:none; padding:0; overflow:visible; }
+    html.m-ui :is(#m-more, .m-overlay) .seg button { min-height:48px; font-size:15px; color:var(--ink); }
+    html.m-ui :is(#m-more, .m-overlay) .seg button.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+    html.m-ui :is(#m-more, .m-overlay) .m-views { flex-direction:column; align-items:stretch; width:100%; }
+    html.m-ui :is(#m-more, .m-overlay) #btn-walk { width:100%; }
+    html.m-ui :is(#m-more, .m-overlay) .switch { display:flex; padding:0 14px; width:100%; color:var(--ink); }
+    html.m-ui :is(#m-more, .m-overlay) .dd { flex:1 1 100%; }
+    html.m-ui :is(#m-more, .m-overlay) .dd > button { width:100%; }
+    html.m-ui #m-more .m-wlbl { display:inline !important; }
+    html.m-ui #m-touchhint { left:10px !important; transform:none !important; max-width:calc(100% - 82px) !important; } /* laisse la place au burger */
+    html.m-ui :is(#m-more, .m-overlay) .m-row button.on { background:var(--accent) !important; color:#fff !important; border-color:var(--accent) !important; font-weight:600; }
+    html.m-ui :is(#m-more, .m-overlay) .m-title { font-size:17px; font-weight:700; color:var(--ink); margin:0 2px; }
+    /* marche (mode normal) : bouton pour sortir, l'en-tête n'existant plus */
+    #m-walkexit { display:none; }
+    html.m-ui.m-walk:not(.view-mode) #m-walkexit { display:inline-flex; position:absolute; top:calc(10px + env(safe-area-inset-top)); left:max(10px, env(safe-area-inset-left));
+      z-index:50; min-height:44px; padding:0 14px; border-radius:14px; align-items:center; gap:6px; font-weight:600;
+      background:rgba(251,250,247,.86); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid var(--line); }
+    html.m-ui.m-walk #m-walktip { top:calc(66px + env(safe-area-inset-top)); }
 
     /* menu « ☰ » (outils) */
-    html.m-ui #m-more { display:flex; flex-direction:column; gap:12px; position:absolute; top:calc(var(--m-head) + 6px); right:8px; z-index:40;
+    html.m-ui #m-more:not(.m-overlay) { display:flex; flex-direction:column; gap:12px; position:absolute; top:calc(var(--m-head) + 6px); right:8px; z-index:40;
       width:min(330px, calc(100% - 16px)); max-height:calc(100% - var(--m-head) - 16px); overflow:auto; background:var(--card);
       border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(30,25,15,.22); padding:12px; }
     html.m-ui #m-more[hidden] { display:none; }
@@ -254,7 +297,10 @@
 
   const walkUI = el('div', { id: 'm-walkui' });
   const joy = el('div', { id: 'm-joy', title: 'Glisse pour marcher' }, [el('i')]);
-  const walkTip = el('div', { id: 'm-walktip', className: 'bubble', textContent: 'Joystick : marcher · glisser dans la vue : regarder · « 🚶 » pour sortir' });
+  const walkTip = el('div', { id: 'm-walktip', className: 'bubble', textContent: 'Joystick : marcher · glisser dans la vue : regarder' });
+  // sortir de la marche (l'en-tête n'existe plus sur téléphone)
+  const walkExit = el('button', { id: 'm-walkexit', type: 'button', textContent: '✕ Sortir' });
+  walkExit.onclick = () => { const w = $('btn-walk'); if (w) w.click(); };
   walkUI.append(walkTip, joy);
   view.appendChild(walkUI);
 
@@ -335,10 +381,11 @@
   function build() {
     built = true;
     header = document.querySelector('header');
-    moreBtn = el('button', { id: 'm-more-btn', type: 'button', title: 'Outils : mesurer, électricité, affichage, annuler', textContent: '☰' });
+    moreBtn = el('button', { id: 'm-more-btn', className: 'm-burger', type: 'button', title: 'Menu', 'aria-label': 'Menu' });
+    moreBtn.innerHTML = '<span></span><span></span><span></span>';
     moreBtn.setAttribute('aria-haspopup', 'true');
     moreBtn.setAttribute('aria-expanded', 'false');
-    more = el('div', { id: 'm-more', hidden: true });
+    more = el('div', { id: 'm-more', className: 'm-overlay', hidden: true });
     more.setAttribute('role', 'menu');
 
     sheet = el('div', { id: 'm-sheet' });
@@ -414,10 +461,10 @@
     moreBtn.addEventListener('click', (e) => { e.stopPropagation(); setMore(more.hidden); });
     document.addEventListener('click', (e) => {
       if (!active || more.hidden) return;
-      if (!more.contains(e.target) && e.target !== moreBtn) setMore(false);
+      if (!more.contains(e.target) && !moreBtn.contains(e.target)) setMore(false);
     });
     // les outils ferment le menu (on veut voir la vue)
-    more.addEventListener('click', (e) => { if (e.target.closest('#m-tool, #elec-btn')) setTimeout(() => setMore(false), 0); });
+    more.addEventListener('click', (e) => { if (e.target.closest('#m-tool, #elec-btn, [data-view], #btn-walk')) setTimeout(() => setMore(false), 0); });
     // un meuble ajouté depuis le catalogue : refermer le tiroir pour le voir posé
     document.addEventListener('click', (e) => { if (active && e.target.closest('#catalog button.cat, #custom-card button.primary')) setOpen(false); });
   }
@@ -461,8 +508,11 @@
     // outils de l'en-tête rangés dans le menu « ☰ » (sauf en visite : seulement vues, Marcher, Réaliste)
     const realBar = $('real') && $('real').closest('.toolbar');
     if (!viewOnly) {
-      header.appendChild(moreBtn);
+      view.appendChild(moreBtn);
+      view.appendChild(walkExit);
       const sec = (t) => more.appendChild(el('div', { className: 'm-sec', textContent: t }));
+      const viewsBar = document.querySelector('header .m-views');
+      sec('Vues'); moveTo(viewsBar, more);
       const undoBar = $('btn-undo') && $('btn-undo').closest('.toolbar');
       sec('Modifications'); moveTo(undoBar, more);
       sec('Outils'); moveTo($('tools-slot'), more); moveTo($('elec-slot'), more);
@@ -499,7 +549,7 @@
     // remettre chaque nœud à sa place d'origine (ordre inverse)
     while (moved.length) { const { node, ph } = moved.pop(); ph.parentNode.insertBefore(node, ph); ph.remove(); }
     more.textContent = '';
-    [moreBtn, more, sheet, actbar, touchHint].forEach((n) => n && n.remove());
+    [moreBtn, more, sheet, actbar, touchHint, walkExit].forEach((n) => n && n.remove());
     const wb = $('btn-walk');
     if (wb && walkBtnHTML !== null) { wb.innerHTML = walkBtnHTML; walkBtnHTML = null; }
     const dd = $('disp-dd');

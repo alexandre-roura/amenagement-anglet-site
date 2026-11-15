@@ -544,12 +544,39 @@
 
   // objets "à poser" (lampe de bureau, de chevet) : ne heurtent que les autres objets à poser
   const onTop = (it) => !!FURN.byId[it.type].onTop;
+  // objets muraux (drapeau, sabres…) : accrochés contre un mur, à une hauteur réglable (meta.y = hauteur du bas, cm)
+  const onWall = (it) => !!FURN.byId[it.type].wall;
+  const wallY = (it) => (it.meta && Number.isFinite(it.meta.y) ? it.meta.y : FURN.byId[it.type].wall.y);
+  // hauteur fixée à la main (champ « Hauteur du bas », Page↑/Page↓) ; sinon : objet à poser = suit le meuble dessous, meuble = au sol
+  const manualY = (it) => (!onWall(it) && it.meta && Number.isFinite(it.meta.y) ? it.meta.y : null);
+  // dessus du meuble (ou du plan de travail) sous le centre de l'objet : { y, by } (0 / null = le sol)
+  function surfaceBelow(it) {
+    const pt = [it.x, it.z];
+    let y = 0, by = null;
+    items.forEach((o) => {
+      const d = FURN.byId[o.type];
+      if (o === it || onTop(o) || onWall(o) || !d.top || !APT.pointInPoly(pt, poly(o))) return;
+      const t = (manualY(o) || 0) + d.top * (o.h / d.h);
+      if (t > y) { y = t; by = o.name; }
+    });
+    APT.fixed.forEach((f) => { if (f.kind === 'kitchen' && APT.pointInPoly(pt, f.poly) && APT.kitchen.worktop > y) { y = APT.kitchen.worktop; by = 'plan de travail'; } });
+    return { y, by };
+  }
   function isInvalid(it) {
     const p = poly(it);
     if (!APT.inside(p)) return true;
-    if (!onTop(it) && APT.fixed.some((f) => APT.polyOverlap(p, f.poly, 0.5))) return true;
+    if (!onTop(it) && !onWall(it) && APT.fixed.some((f) => APT.polyOverlap(p, f.poly, 0.5))) return true;
+    // deux objets ne se gênent que si leurs empreintes ET leurs hauteurs se recouvrent (objet posé au-dessus = libre)
+    const ea = elevation(it), vOverlap = (o) => { const eb = elevation(o); return ea < eb + o.h - 0.5 && eb < ea + it.h - 0.5; };
+    if (onWall(it)) { // mural : dans la pièce ; gêné par ce qui occupe le même mur à la même hauteur (armoire, autre objet mural…)
+      return items.some((o) => o !== it && !onTop(o) && APT.polyOverlap(p, poly(o), 0.5) && vOverlap(o));
+    }
     return items.some((o) => {
       if (o === it || !APT.polyOverlap(p, poly(o), 0.5)) return false;
+      if (onWall(o)) return !onTop(it) && vOverlap(o); // un objet mural ne gêne que ce qui monte jusqu'à lui
+      if (!vOverlap(o)) return false; // l'un est au-dessus de l'autre
+      // objet posé sur un plateau : les chaises rangées sous ce plateau ne le gênent pas (et inversement)
+      if ((onTop(it) && ea > 0 && FURN.byId[o.type].seat) || (onTop(o) && elevation(o) > 0 && FURN.byId[it.type].seat)) return false;
       if (canNest(it, o) || canNest(o, it)) return false; // chaise sous la table, bureau sous la mezzanine...
       if (onTop(o) === onTop(it)) return true;
       // un objet à poser ne peut chevaucher qu'un meuble à plateau (bureau, table, chevet...)
@@ -568,16 +595,10 @@
 
   // hauteur à laquelle poser un objet "à poser" : plateau du meuble (ou plan de travail) sous son centre
   function elevation(it) {
-    if (!onTop(it)) return 0;
-    const pt = [it.x, it.z];
-    let e = 0;
-    items.forEach((o) => {
-      const d = FURN.byId[o.type];
-      if (o === it || onTop(o) || !d.top || !APT.pointInPoly(pt, poly(o))) return;
-      e = Math.max(e, d.top * (o.h / d.h));
-    });
-    APT.fixed.forEach((f) => { if (f.kind === 'kitchen' && APT.pointInPoly(pt, f.poly)) e = Math.max(e, APT.kitchen.worktop); }); // posé sur le plan de travail
-    return e;
+    if (onWall(it)) return wallY(it);
+    const m = manualY(it);
+    if (m != null) return m;
+    return onTop(it) ? surfaceBelow(it).y : 0; // objet à poser : sur le meuble / plan de travail dessous (magnétisme en hauteur)
   }
 
   function sync(it) {
@@ -590,7 +611,7 @@
 
   function refreshStates() {
     items.forEach((it) => {
-      if (onTop(it)) it.group.position.y = elevation(it); // suit le meuble sur lequel il est posé
+      it.group.position.y = elevation(it); // suit le meuble sur lequel il est posé (objets à poser), ou sa hauteur fixée
       const bad = isInvalid(it);
       it.bad = bad;
       it.decal.material.color.set(bad ? 0xe5392b : 0xffc400);
@@ -730,6 +751,7 @@
     const step = e.shiftKey ? 1 : 5;
     const k = e.key;
     if (k === 'Delete' || k === 'Backspace') { removeItem(selected); e.preventDefault(); return; }
+    if (k === 'PageUp' || k === 'PageDown') { setHeight(selected, elevation(selected) + (k === 'PageUp' ? 1 : -1) * (e.shiftKey ? 5 : 1)); e.preventDefault(); return; } // monter / descendre
     if (k === 'r' || k === 'R') rotateSel(e.shiftKey ? -90 : 90);
     else if (k === 'ArrowLeft') selected.x -= step;
     else if (k === 'ArrowRight') selected.x += step;
@@ -798,12 +820,7 @@
         const b = document.createElement('button');
         b.className = 'cat';
         b.innerHTML = `<span>${c.name}</span><small>${c.w} × ${c.d} × ${c.h} cm</small>`;
-        b.onclick = () => {
-          const it = addItem(c.id);
-          freeSpot(it);
-          sync(it);
-          select(it);
-        };
+        b.onclick = () => addFromCatalog(c.id);
         box.appendChild(b);
       });
     });
@@ -836,6 +853,42 @@
   });
   function refreshStatesNoPanel() { const keep = updatePanel; updatePanel = () => {}; refreshStates(); updatePanel = keep; renderList(); }
 
+  // ajout depuis le catalogue : place libre la plus proche du séjour ; un objet mural va directement contre le mur le plus proche
+  function addFromCatalog(type, o) {
+    const it = addItem(type, o);
+    freeSpot(it);
+    sync(it);
+    if (onWall(it) && window.__snap && __snap.snapToWall) { __snap.snapToWall(it); sync(it); }
+    select(it);
+    return it;
+  }
+  // hauteur du bas de l'objet : saisie = hauteur fixée (l'objet ne suit plus les meubles)
+  function setHeight(it, v, keepPanel) {
+    it.meta.y = Math.max(0, Math.min(H - Math.min(it.h, H - 1), Math.round(v * 10) / 10));
+    sync(it);
+    if (keepPanel) refreshStatesNoPanel(); else refreshStates();
+  }
+  $('f-y').addEventListener('input', () => {
+    if (!selected) return;
+    const v = parseFloat($('f-y').value);
+    if (isFinite(v)) setHeight(selected, v, true);
+  });
+  // ⤓ : objet à poser → revient en automatique (suit le meuble dessous) ; meuble → posé sur ce qu'il y a dessous (ou au sol) ;
+  // objet mural → juste au-dessus du meuble dessous
+  $('f-y-snap').onclick = () => {
+    const it = selected;
+    if (!it) return;
+    const s = surfaceBelow(it);
+    if (onWall(it)) {
+      if (!s.by) { SCEN.toast("Rien sous l'objet : sa hauteur ne change pas."); return; }
+      it.meta.y = Math.round(s.y + 3);
+    } else if (onTop(it) || !s.by) delete it.meta.y;
+    else it.meta.y = Math.round(s.y * 10) / 10;
+    sync(it);
+    refreshStates();
+    SCEN.toast(s.by ? (onWall(it) ? 'Placé juste au-dessus de : ' : 'Posé sur : ') + s.by + ' (' + Math.round(elevation(it)) + ' cm)' : 'Posé au sol.');
+  };
+
   let updatePanel = function () {
     const p = $('props');
     p.hidden = !selected;
@@ -846,6 +899,12 @@
     Object.entries(fields).forEach(([k, id]) => {
       if (document.activeElement !== $(id)) $(id).value = Math.round(selected[k] * 10) / 10;
     });
+    if (document.activeElement !== $('f-y')) $('f-y').value = Math.round(elevation(selected) * 10) / 10;
+    const m = manualY(selected), s = surfaceBelow(selected);
+    $('f-y-info').textContent = onWall(selected) ? 'Accroché au mur. ⤓ le place juste au-dessus du meuble en dessous.'
+      : m != null ? "Hauteur fixée. ⤓ le repose sur ce qu'il y a dessous."
+      : onTop(selected) ? (s.by ? 'Posé sur : ' + s.by + ' (suit le meuble en dessous).' : 'Posé au sol (se pose tout seul sur un meuble en dessous).')
+      : 'Au sol. Saisis une hauteur pour le soulever, ou ⤓ pour le poser sur le meuble en dessous.';
   };
 
   $('btn-rl').onclick = () => rotateSel(-15);
@@ -944,7 +1003,7 @@
     if (!okPt(x + R, z) || !okPt(x - R, z) || !okPt(x, z + R) || !okPt(x, z - R)) return false;
     const body = [[x - R, z - R], [x + R, z - R], [x + R, z + R], [x - R, z + R]];
     if (APT.fixed.some((f) => APT.polyOverlap(body, f.poly, 0))) return false;
-    return !items.some((it) => APT.polyOverlap(body, poly(it), 0));
+    return !items.some((it) => !onWall(it) && APT.polyOverlap(body, poly(it), 0)); // on passe sous un objet mural
   }
 
   let savedView = null;
@@ -1145,6 +1204,7 @@
     readOnly: !!(window.SCEN && SCEN.viewOnly), // mode visite (lien partagé en lecture seule) : aucune modification possible
     addItem, removeItem, rebuild, sync, freeSpot, renderCatalog, renderList,
     // ajout d'un meuble comme depuis le catalogue (posé dans la place libre la plus proche du séjour, sélectionné)
-    addFromCatalog: (type, o) => { const it = addItem(type, o); freeSpot(it); sync(it); select(it); return it; },
+    addFromCatalog: (type, o) => addFromCatalog(type, o),
+    onWall, wallY, surfaceBelow,
   };
 })();
