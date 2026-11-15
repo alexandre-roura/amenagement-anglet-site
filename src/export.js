@@ -609,7 +609,7 @@
     st.textContent = `
       html.view-mode header > .toolbar:not(#visit-tools), html.view-mode header > .sep, html.view-mode #warn { display:none !important; }
       html.view-mode #visit-banner { font-weight:600; }
-      #visit-dock { position:absolute; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:8;
+      #visit-dock { position:absolute; left:0; right:0; margin:0 auto; width:max-content; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:8; /* centrée sans translate : toute la largeur reste disponible */
         display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; padding:6px; max-width:calc(100% - 24px);
         background:rgba(251,250,247,.9); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
         border:1px solid var(--line); border-radius:16px; box-shadow:0 8px 30px rgba(30,25,15,.18); }
@@ -617,6 +617,8 @@
       #visit-dock button { border:none; background:transparent; border-radius:9px; padding:7px 12px; font-size:13.5px; color:var(--mute); min-height:36px; white-space:nowrap; }
       #visit-dock button:hover { color:var(--ink); background:rgba(0,0,0,.04); }
       #visit-dock button.on { background:var(--card); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+      #visit-dock .walk { background:var(--accent-soft); color:var(--accent); font-weight:600; box-shadow:inset 0 0 0 1px rgba(31,95,91,.35); } /* bouton principal de la visite */
+      #visit-dock .walk:hover { background:#d6e8e4; color:var(--accent); }
       #visit-dock .walk.on { background:var(--accent); color:#fff; }
       #visit-dock .sep2 { width:1px; align-self:stretch; background:var(--line); margin:4px 2px; }
       #visit-dock.walking .views { display:none; }
@@ -639,6 +641,8 @@
         #visit-dock { bottom:calc(10px + env(safe-area-inset-bottom)); gap:4px; padding:5px; border-radius:14px; }
         #visit-dock button { padding:7px 9px; font-size:13px; }
         #visit-dock .lbl { display:none; }
+        #visit-dock .walk .lbl { display:inline; } /* « Visiter » reste écrit sur téléphone */
+        #visit-dock .walk { padding:7px 13px; }
         #visit-dock .sep2 { display:none; }
         html.view-mode #visit-legend { bottom:calc(118px + env(safe-area-inset-bottom)); font-size:12px; }
       }`;
