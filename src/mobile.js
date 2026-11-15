@@ -464,7 +464,7 @@
       if (!more.contains(e.target) && !moreBtn.contains(e.target)) setMore(false);
     });
     // les outils ferment le menu (on veut voir la vue)
-    more.addEventListener('click', (e) => { if (e.target.closest('#m-tool, #elec-btn, [data-view], #btn-walk')) setTimeout(() => setMore(false), 0); });
+    more.addEventListener('click', (e) => { if (e.target.closest('#m-tool, #elec-btn, [data-view], #btn-walk, #btn-share')) setTimeout(() => setMore(false), 0); });
     // un meuble ajouté depuis le catalogue : refermer le tiroir pour le voir posé
     document.addEventListener('click', (e) => { if (active && e.target.closest('#catalog button.cat, #custom-card button.primary')) setOpen(false); });
   }
@@ -513,6 +513,7 @@
       const sec = (t) => more.appendChild(el('div', { className: 'm-sec', textContent: t }));
       const viewsBar = document.querySelector('header .m-views');
       sec('Vues'); moveTo(viewsBar, more);
+      sec('Partager'); moveTo($('share-slot'), more);
       const undoBar = $('btn-undo') && $('btn-undo').closest('.toolbar');
       sec('Modifications'); moveTo(undoBar, more);
       sec('Outils'); moveTo($('tools-slot'), more); moveTo($('elec-slot'), more);

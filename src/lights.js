@@ -57,7 +57,8 @@
   }
   // mode visite : ambiance par défaut, rien n'est lu ni écrit dans le navigateur (ADR 0009)
   const viewOnly = !!(window.SCEN && SCEN.viewOnly);
-  let amb = checkAmb(null);
+  // visite : ambiance du lien (moment de la journée choisi, plafond), sinon celle de départ
+  let amb = checkAmb(viewOnly && SCEN.sharedPayload && SCEN.sharedPayload.a ? Object.assign({}, AMB_DEFAULT, SCEN.sharedPayload.a) : null);
   if (!viewOnly) { try { amb = checkAmb(JSON.parse(localStorage.getItem(KEY))); } catch (e) {} }
   const saveAmb = () => { if (viewOnly) return; try { localStorage.setItem(KEY, JSON.stringify(amb)); } catch (e) {} };
 
@@ -437,5 +438,11 @@
     syncLamps();
     return amb;
   }
+  // le lien emporte l'ambiance (seulement ce qui diffère du départ)
+  if (window.SCEN && SCEN.shareExtras) SCEN.shareExtras.push(() => {
+    const a = {};
+    Object.keys(AMB_DEFAULT).forEach((k) => { if (amb[k] !== AMB_DEFAULT[k]) a[k] = amb[k]; });
+    return Object.keys(a).length ? { a } : {};
+  });
   window.__lights = { kelvin, syncLamps, rebuildCeiling, applyCeiling, renderPoints, amb: () => amb, check: checkAmb, setAmb };
 })();

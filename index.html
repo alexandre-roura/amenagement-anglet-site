@@ -216,6 +216,10 @@
       </div>
       <button id="btn-walk" class="icon" title="Se promener dans l'appartement">🚶 Marcher</button>
     </div>
+    <!-- partager la visite (lien court, lecture seule) : géré par src/export.js -->
+    <div id="share-slot" class="toolbar">
+      <button id="btn-share" class="icon" title="Envoyer un lien de visite : la personne voit ce scénario sans pouvoir le modifier">📤 <span class="hide-md">Partager</span></button>
+    </div>
     <!-- boutons ajoutés par src/measure.js (outil de mesure, zones de passage) -->
     <div id="tools-slot" class="toolbar"></div>
     <!-- bouton ajouté par src/electric.js -->
@@ -267,7 +271,7 @@
           <button id="exp-all">Tout exporter</button>
           <button id="imp">Importer…</button>
           <input type="file" id="imp-file" accept=".json,application/json" hidden>
-          <button id="share">Lien de partage</button>
+          <button id="share" title="Lien que la personne peut modifier : le scénario est ajouté à ses scénarios">Lien modifiable</button>
         </div>
         <input id="share-box" type="text" readonly hidden aria-label="Lien de partage">
         <div class="legend">L'export crée un fichier .json : copie de sécurité, ou à envoyer à quelqu'un. Les scénarios restent aussi enregistrés dans ce navigateur.</div>

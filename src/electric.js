@@ -216,7 +216,16 @@
   let pts = [];
   // mode visite : uniquement l'électricité du lien, sinon les positions par défaut ; jamais le stockage du navigateur (ADR 0009)
   const viewOnly = !!(window.SCEN && SCEN.viewOnly);
-  const shared = viewOnly && SCEN.sharedPayload && Array.isArray(SCEN.sharedPayload.e) ? SCEN.sharedPayload.e : null;
+  // lien : e = liste complète (anciens liens) ; e2 = un id seul pour un point resté comme au départ, sinon le point entier
+  const sharedList = () => {
+    const P = SCEN.sharedPayload;
+    if (Array.isArray(P.e)) return P.e;
+    if (!Array.isArray(P.e2)) return null;
+    const byId = {};
+    defaults().forEach((d) => (byId[d.id] = d));
+    return P.e2.map((x) => (typeof x === 'string' ? (Object.prototype.hasOwnProperty.call(byId, x) ? byId[x] : null) : x)).filter(Boolean);
+  };
+  const shared = viewOnly && SCEN.sharedPayload ? sharedList() : null;
   function load() {
     if (shared) return shared;
     if (viewOnly) return defaults();
@@ -348,7 +357,18 @@
     postName,
     lightName,
   });
-  if (window.SCEN) SCEN.extraShare = () => ({ e: ELEC.data() }); // le lien de partage / de visite emporte l'électricité
+  // le lien de partage / de visite emporte l'électricité (en ne détaillant que les points modifiés ou ajoutés)
+  const canon = (o) => JSON.stringify(Object.keys(o).sort().reduce((r, k) => ((r[k] = o[k]), r), {}));
+  if (window.SCEN && SCEN.shareExtras) SCEN.shareExtras.push(() => {
+    const base = {};
+    clean(defaults()).forEach((d) => (base[d.id] = canon(d)));
+    const r4 = (v) => Math.round(v * 1e4) / 1e4;
+    return { e2: ELEC.data().map((p) => {
+      if (base[p.id] === canon(p)) return p.id;
+      if (typeof p.nx === 'number') { p.nx = r4(p.nx); p.nz = r4(p.nz); }
+      return p;
+    }) };
+  });
 
   function changed(noSave) {
     pruneCtrl(pts); // liaisons vers des lumières supprimées ou des postes retirés

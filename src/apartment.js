@@ -226,7 +226,7 @@
   // lecture des cotes enregistrées AVANT la construction de la scène (SCEN n'existe pas encore : même test que scenarios.js)
   {
     let saved = null;
-    if (!/(^\?|&)view(=1)?(&|$)/.test(location.search)) {
+    if (!(/(^\?|&)view(=1)?(&|$)/.test(location.search) || /^#v=/.test(location.hash || ''))) {
       try { saved = JSON.parse(localStorage.getItem(APT.FIXES_KEY) || 'null'); } catch (e) { saved = null; }
     }
     APT.applyFixes(saved);

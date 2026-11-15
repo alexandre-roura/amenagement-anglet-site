@@ -32,6 +32,15 @@
   };
 
   // ------------------------------------------------------------------ interface
+  // le lien emporte les cotes modifiées ; la visite les applique (sans rien enregistrer)
+  if (window.SCEN && SCEN.shareExtras) SCEN.shareExtras.push(() => {
+    const f = {}, D = APT.fixesDefaults;
+    Object.keys(APT.fixes).forEach((k) => { if (APT.fixes[k] !== D[k]) f[k] = APT.fixes[k]; });
+    return Object.keys(f).length ? { f } : {};
+  });
+  const sp = visit && window.SCEN && SCEN.sharedPayload;
+  if (sp && sp.f && typeof sp.f === 'object' && !Array.isArray(sp.f)) apply(Object.assign({}, APT.fixesDefaults, sp.f), false);
+
   const card = $('fixtures-card');
   if (!card) return;
   if (visit) { card.hidden = true; return; }

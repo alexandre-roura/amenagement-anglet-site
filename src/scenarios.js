@@ -11,8 +11,9 @@
   const MAX_UNDO = 100, MAX_HISTORY = 25, AUTO_SNAPSHOT_MS = 3 * 60 * 1000;
   const SCEN = (window.SCEN = {});
   const $ = (id) => document.getElementById(id);
-  // mode visite : index.html?view#s=... -> on affiche le scénario partagé, sans rien lire ni écrire dans le navigateur
-  SCEN.viewOnly = /(^\?|&)view(=1)?(&|$)/.test(location.search);
+  // mode visite : index.html#v=... (ou l'ancien ?view#s=...) -> on affiche le scénario partagé, sans rien lire ni écrire dans le navigateur
+  SCEN.viewOnly = (/(^\?|&)view(=1)?(&|$)/.test(location.search) || /^#v=/.test(location.hash || ''));
+  SCEN.shareExtras = []; // fonctions () => {clé: valeur} ajoutées au lien (électricité, ambiance, cotes)
   if (SCEN.viewOnly) document.documentElement.classList.add('view-mode');
 
   let db = null, adapter = null, commitTimer = null, persistTimer = null, defaultLayout = [];
@@ -361,22 +362,98 @@
     toast(`${list.length} scénario${list.length > 1 ? 's' : ''} importé${list.length > 1 ? 's' : ''}${extra}.`);
   }
 
-  // ------------------------------------------------------------------ lien de partage (#s=...)
-  const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // ------------------------------------------------------------------ liens : #v=... (visite) et #p=... (copie modifiable)
+  // Contenu compact : seulement ce qui diffère des valeurs de départ (dimensions du catalogue, électricité, ambiance,
+  // cotes), puis compressé. Les anciens liens #s=... (JSON en base64) restent lisibles.
+  // ---- compression des liens (principe de LZ-String, MIT) : texte → caractères sûrs dans une adresse (6 bits par caractère)
+  const LZ_KEY = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const LZ_REV = {};
+  for (let i = 0; i < LZ_KEY.length; i++) LZ_REV[LZ_KEY.charAt(i)] = i;
+  function lzc(input) {
+    if (input == null) return '';
+    const bits = 6, out = [];
+    const dict = {}, toCreate = {};
+    let w = '', enlargeIn = 2, dictSize = 3, numBits = 2, val = 0, pos = 0;
+    const put = (v, n) => { for (let i = 0; i < n; i++) { val = (val << 1) | (v & 1); if (pos === bits - 1) { pos = 0; out.push(LZ_KEY.charAt(val)); val = 0; } else pos++; v >>= 1; } };
+    const emit = (w) => {
+      if (Object.prototype.hasOwnProperty.call(toCreate, w)) {
+        const code = w.charCodeAt(0);
+        if (code < 256) { put(0, numBits); put(code, 8); } else { put(1, numBits); put(code, 16); }
+        if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+        delete toCreate[w];
+      } else put(dict[w], numBits);
+      if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+    };
+    for (let i = 0; i < input.length; i++) {
+      const c = input.charAt(i);
+      if (!Object.prototype.hasOwnProperty.call(dict, c)) { dict[c] = dictSize++; toCreate[c] = true; }
+      const wc = w + c;
+      if (Object.prototype.hasOwnProperty.call(dict, wc)) w = wc;
+      else { emit(w); dict[wc] = dictSize++; w = c; }
+    }
+    if (w !== '') emit(w);
+    put(2, numBits); // fin
+    for (;;) { val <<= 1; if (pos === bits - 1) { out.push(LZ_KEY.charAt(val)); break; } else pos++; }
+    return out.join('');
+  }
+  function lzd(input) {
+    if (!input) return '';
+    const bits = 6, len = input.length, dict = [0, 1, 2];
+    let enlargeIn = 4, dictSize = 4, numBits = 3, entry = '', w, c, result = [];
+    let dval = LZ_REV[input.charAt(0)], dpos = 32, dindex = 1;
+    const read = (n) => {
+      let b = 0, p = 1;
+      for (let i = 0; i < n; i++) {
+        const r = dval & dpos; dpos >>= 1;
+        if (dpos === 0) { dpos = 32; dval = LZ_REV[input.charAt(dindex++)]; }
+        b |= (r > 0 ? 1 : 0) * p; p <<= 1;
+      }
+      return b;
+    };
+    switch (read(2)) { case 0: c = String.fromCharCode(read(8)); break; case 1: c = String.fromCharCode(read(16)); break; default: return ''; }
+    dict[3] = c; w = c; result.push(c);
+    for (;;) {
+      if (dindex > len) return '';
+      let code = read(numBits);
+      if (code === 0) { dict[dictSize++] = String.fromCharCode(read(8)); code = dictSize - 1; enlargeIn--; }
+      else if (code === 1) { dict[dictSize++] = String.fromCharCode(read(16)); code = dictSize - 1; enlargeIn--; }
+      else if (code === 2) return result.join('');
+      if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      if (dict[code]) entry = dict[code];
+      else if (code === dictSize) entry = w + w.charAt(0);
+      else return null;
+      result.push(entry);
+      dict[dictSize++] = w + entry.charAt(0);
+      if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      w = entry;
+    }
+  }
   const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
-  function shareLink() {
+  function sharePayload() {
     flush();
     const s = cur();
-    const payload = { n: s.name, i: clean(adapter.getItems()).map((o) => [o.type, o.x, o.z, o.rot, o.w, o.d, o.h,
-      o.light ? [o.light.on ? 1 : 0, o.light.p, o.light.k, o.light.m === 'color' ? 1 : 0, o.light.c || ''] : 0, o.meta || 0]) };
-    if (SCEN.extraShare) Object.assign(payload, SCEN.extraShare()); // ex. électricité
-    return location.href.split('#')[0] + '#s=' + b64e(JSON.stringify(payload));
+    const i = clean(adapter.getItems()).map((o) => {
+      const def = FURN.byId[o.type];
+      // 0 = valeur par défaut (dimension du catalogue, rotation nulle, pas de lumière ni de réglage) ; zéros finaux retirés
+      const a = [o.type, o.x, o.z, o.rot, o.w === def.w ? 0 : o.w, o.d === def.d ? 0 : o.d, o.h === def.h ? 0 : o.h,
+        o.light ? [o.light.on ? 1 : 0, o.light.p, o.light.k, o.light.m === 'color' ? 1 : 0, o.light.c || ''] : 0, o.meta || 0];
+      while (a.length > 3 && !a[a.length - 1]) a.pop();
+      return a;
+    });
+    const p = { n: s.name, i };
+    SCEN.shareExtras.forEach((f) => { try { Object.assign(p, f()); } catch (e) { console.error(e); } });
+    return p;
+  }
+  // visit = true : lien de visite (lecture seule) ; sinon copie modifiable, ajoutée aux scénarios de la personne
+  function shareLink(visit) {
+    const base = location.href.split(/[?#]/)[0];
+    return base + (visit ? '#v=' : '#p=') + lzc(JSON.stringify(sharePayload()));
   }
   function readShareHash() {
-    const m = /[#&]s=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+    const m = /[#&]([spv])=([A-Za-z0-9_-]+)/.exec(location.hash || '');
     if (!m) return null;
     try {
-      const p = JSON.parse(b64d(m[1]));
+      const p = JSON.parse(m[1] === 's' ? b64d(m[2]) : lzd(m[2]));
       if (!p || typeof p !== 'object' || (p.i !== undefined && !Array.isArray(p.i))) return null;
       const items = (p.i || []).filter(Array.isArray).map(([type, x, z, rot, w, d, h, L, M]) => {
         const o = { type, x, z, rot, w, d, h };
@@ -390,7 +467,7 @@
     } catch (e) { return null; }
   }
   async function copyShare() {
-    const link = shareLink();
+    const link = shareLink(false);
     let ok = false;
     try { await navigator.clipboard.writeText(link); ok = true; } catch (e) {}
     const box = $('share-box');
@@ -504,7 +581,7 @@
     });
     setInterval(() => { renderStatus(); renderUndo(); }, 15000);
     window.addEventListener('beforeunload', () => { if (SCEN.viewOnly) return; flush(); try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} });
-    SCEN.shareLink = shareLink; // utilisé par export.js (lien de visite)
+    SCEN.shareLink = shareLink; // utilisé par export.js : shareLink(true) = lien de visite
   }
 
   // pour les tests / la console

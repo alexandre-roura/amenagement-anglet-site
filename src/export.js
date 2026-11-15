@@ -516,18 +516,21 @@
   }
 
   // ------------------------------------------------------------------ 3. lien de visite (lecture seule)
-  function visitLink() {
-    const link = SCEN.shareLink();
-    const hash = link.slice(link.indexOf('#'));
-    const base = link.split('#')[0];
-    const q = base.indexOf('?');
-    const path = q < 0 ? base : base.slice(0, q);
-    const params = (q < 0 ? '' : base.slice(q + 1)).split('&').filter((p) => p && !/^view(=|$)/.test(p));
-    return path + '?' + ['view'].concat(params).join('&') + hash;
-  }
-  async function copyVisit() {
+  // lien court #v=... : s'ouvre toujours en visite (rien de modifiable, rien d'enregistré chez la personne)
+  const visitLink = () => SCEN.shareLink(true);
+  // « Partager » : feuille de partage du système (téléphone, Windows…) avec le lien de visite ; sinon copie du lien
+  async function shareVisit() {
     if (typeof SCEN.shareLink !== 'function') { toast('Lien indisponible pour le moment.'); return; }
-    const link = visitLink();
+    const url = visitLink();
+    if (navigator.share && location.protocol !== 'file:') {
+      try { await navigator.share({ title: 'Visite · T1 Anglet', text: 'Visite de l\'appartement (lecture seule)', url }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; } // annulé par la personne : rien d'autre
+    }
+    copyVisit(url);
+  }
+  async function copyVisit(given) {
+    if (typeof SCEN.shareLink !== 'function') { toast('Lien indisponible pour le moment.'); return; }
+    const link = typeof given === 'string' ? given : visitLink();
     let ok = false;
     try { await navigator.clipboard.writeText(link); ok = true; } catch (e) {}
     const box = $('x-visit-box');
@@ -555,8 +558,10 @@
       <div class="legend">Le lien de visite montre le scénario tel quel (vues, marche, rendu réaliste), sans rien modifier ni enregistrer chez la personne.${location.protocol === 'file:' ? " Tant que le site n'est pas en ligne, il ne marche que sur ce PC." : ''}</div>`;
     $('x-png').onclick = savePng;
     $('x-plan').onclick = openPlan;
-    $('x-visit').onclick = copyVisit;
+    $('x-visit').onclick = () => copyVisit();
   }
+  const shareBtn = $('btn-share');
+  if (shareBtn) shareBtn.onclick = shareVisit;
 
   // ------------------------------------------------------------------ 4. mode visite
   if (viewOnly) {
