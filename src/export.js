@@ -709,8 +709,6 @@
     const hideDecals = () => app.items.forEach((i) => { if (i.decal) i.decal.material.opacity = 0; });
     app.hooks.change.push(hideDecals);
     hideDecals();
-    // ordinateur : rendu réaliste d'office (sur téléphone il resterait trop lourd ; le bouton ✨ reste disponible)
-    if (!coarse && realBox && !realBox.checked) setTimeout(() => { realBox.checked = true; realBox.dispatchEvent(new Event('change')); syncDock(); }, 300);
 
     // pendant la marche, la bulle d'aide de la marche remplace la légende
     let walking = null;
