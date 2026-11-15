@@ -36,14 +36,19 @@
     /* en-tête compact */
     html.m-ui header { position:absolute; left:0; right:0; top:0; height:var(--m-head); flex-wrap:nowrap; gap:6px;
       padding:0 8px; padding-left:max(8px, env(safe-area-inset-left)); padding-right:max(8px, env(safe-area-inset-right)); overflow:hidden; z-index:25; }
-    html.m-ui header .sep, html.m-ui .brand .sub { display:none; }
-    html.m-ui .brand h1 { font-size:14px; }
-    html.m-ui header .toolbar { gap:6px; }
-    html.m-ui .seg { flex:0 1 auto; min-width:0; }
-    html.m-ui .seg button { min-height:38px; min-width:40px; padding:0 9px; font-size:13px; }
+    /* [vues (place restante, défilent si besoin)] [Marcher] [☰] : Marcher et ☰ ne sortent jamais de l'écran,
+       quelle que soit la largeur (iPhone SE / zoom d'affichage = 320 px, grande police Android…) */
+    html.m-ui header .sep, html.m-ui header .grow, html.m-ui .brand { display:none; }
+    html.m-ui header .toolbar { gap:6px; min-width:0; }
+    html.m-ui header .toolbar:has(.seg) { flex:1 1 auto; }
+    html.m-ui header .toolbar.m-views { flex:1 1 auto; }
+    html.m-ui .seg { flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    html.m-ui .seg::-webkit-scrollbar { display:none; }
+    html.m-ui .seg button { flex:1 0 auto; min-height:38px; min-width:38px; padding:0 8px; font-size:13px; }
     html.m-ui header button { min-height:40px; }
-    html.m-ui #btn-walk { min-width:42px; justify-content:center; padding:0 10px; }
+    html.m-ui #btn-walk { flex:none; min-width:42px; justify-content:center; padding:0 10px; }
     html.m-ui #m-more-btn { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:40px; padding:0 10px; font-size:18px; flex:none; }
+    @media (max-width: 359px) { html.m-ui .seg button { padding:0 6px; font-size:12px; } }
     html.m-ui #m-more-btn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
 
     /* menu « ☰ » (outils) */
@@ -445,6 +450,7 @@
 
   let walkBtnHTML = null;
   function enter() {
+    { const sg = document.querySelector('header .seg'); if (sg && sg.closest('.toolbar')) sg.closest('.toolbar').classList.add('m-views'); } // barre des vues : prend la place restante
     if (active) return;
     if (!built) build();
     active = true;
