@@ -1032,17 +1032,19 @@
     return o;
   });
   function save() { if (window.SCEN) SCEN.changed(); }
+  // proposition de départ = ta composition du 15/11/2026 (export « amenagement-proposition-de-depart_2026-11-15_03h37.json »)
   const DEFAULT_LAYOUT = [
-    { type: 'bed1', x: 46, z: 177, rot: 0 }, // 200 cm, entre le radiateur (z 75) et la porte de la salle d'eau
-    { type: 'kallaxmanga', x: 500, z: 176, rot: 203.1 }, // KALLAX + mangas contre le mur en biais, entre le bureau et l'armoire
-    { type: 'wardrobe', x: 592.5, z: 97, rot: -90 },
-    // table contre le mur est, juste après le plan de travail (qui finit à z −73) : l'alcôve reste praticable
-    { type: 'table', x: 588.5, z: -16, rot: 90 },
-    { type: 'chair', x: 533.5, z: -58, rot: 90 },
-    { type: 'chair', x: 533.5, z: 26, rot: 90 },
-    { type: 'deskpc', x: 367, z: 216, rot: 203.1 }, // le long du mur en biais, dos au mur
-    { type: 'chair', x: 341.9, z: 157.1, rot: 23.1 },
-    { type: 'armchair', x: 200, z: 125, rot: 180 }, // face à la baie, accès à la baie dégagé
+    {type: "bed1", x: 49, z: 186, rot: -1.4, w: 90, d: 200, h: 68}, // lit 1 place contre le mur ouest
+    {type: "kallaxmanga", x: 350, z: 44.7, rot: 0, w: 77, d: 39, h: 147, meta: {color: "#2a2a2c"}}, // KALLAX contre le bourrelet
+    {type: "wardrobe", x: 592.8, z: 96.9, rot: -90, w: 100, d: 55, h: 200}, // armoire contre le mur est
+    {type: "table", x: 448.7, z: -6, rot: 0, w: 110, d: 60, h: 75, meta: {color: "#2a2a2c"}}, // table noire dans l'alcôve
+    {type: "chair", x: 440, z: -32, rot: 0, w: 42, d: 42, h: 85, meta: {color: "#2a2a2c", owned: true}},
+    {type: "chair", x: 440, z: 13.2, rot: 180, w: 42, d: 42, h: 85, meta: {color: "#2a2a2c", owned: true}},
+    {type: "deskpc", x: 367.4, z: 216.7, rot: 203.1, w: 140, d: 70, h: 118, meta: {color: "#2a2a2c"}}, // bureau PC le long du mur en biais
+    {type: "chair", x: 356.9, z: 192.1, rot: 23.1, w: 42, d: 42, h: 85, meta: {color: "#2a2a2c", owned: true}},
+    {type: "armchair", x: 260, z: 50, rot: 323.1, w: 70, d: 66, h: 75, meta: {color: "#2a2a2c"}}, // fauteuil
+    {type: "lampdesk", x: 428, z: 214, rot: 225, w: 18, d: 22, h: 42, light: {on: true, p: 55, k: 4000}}, // lampe de bureau
+    {type: "lampfloor", x: 29.8, z: 45.3, rot: 90, w: 30, d: 30, h: 160, light: {on: true, p: 70, k: 2700}}, // lampadaire près de la baie
   ];
   function load(layout) {
     disposeItems(items.slice());

@@ -38,7 +38,7 @@
     soir: { sun: 0.5, hemi: 0.5, env: 0.45, bg: 0xb59a8a, sunColor: 0xff9550 },
     nuit: { sun: 0, hemi: 0.1, env: 0.08, bg: 0x111827 },
   };
-  const AMB_DEFAULT = { moment: 'jour', ceilOn: true, ceilP: 60, ceilK: 2700, ceilStyle: 'bulb', ceilMode: 'white', ceilColor: '#ff9500' };
+  const AMB_DEFAULT = { moment: 'jour', ceilOn: true, ceilP: 60, ceilK: 2700, ceilStyle: 'globe', ceilMode: 'white', ceilColor: '#ff9500' };
   const CEIL_STYLES = ['bulb', 'globe', 'pendant', 'flush'];
   const GLOBE_Y = 28; // centre de la boule papier sous le plafond (cm) : elle pend de 44 cm en tout
   // ambiance validée : chaque champ invalide reprend la valeur par défaut (fichier importé, stockage ancien ou abîmé)
